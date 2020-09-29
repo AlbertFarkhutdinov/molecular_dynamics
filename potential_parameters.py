@@ -24,9 +24,9 @@ class PotentialParameters:
         sigma_pow6, epsilon_x4, r_cut = 1.0, 4.0, self.r_cut
         table_size = 25000
         r_ij = 0.0001 * np.arange(table_size) + 0.5
-        energy_r_cut = epsilon_x4 * (sigma_pow6 ** 2 / (r_cut ** 12) - sigma_pow6 / (r_cut ** 6))
-        energies = epsilon_x4 * (sigma_pow6 ** 2 / (r_ij ** 12) - sigma_pow6 / (r_ij ** 6)) - energy_r_cut
-        forces = 6.0 * epsilon_x4 * (2.0 * sigma_pow6 ** 2 / (r_ij ** 13) - sigma_pow6 / (r_ij ** 7))
+        energy_r_cut = epsilon_x4 * (sigma_pow6 * sigma_pow6 / (r_cut ** 12) - sigma_pow6 / (r_cut ** 6))
+        energies = epsilon_x4 * (sigma_pow6 * sigma_pow6 / (r_ij ** 12) - sigma_pow6 / (r_ij ** 6)) - energy_r_cut
+        forces = 6.0 * epsilon_x4 * (2.0 * sigma_pow6 * sigma_pow6 / (r_ij ** 13) - sigma_pow6 / (r_ij ** 7))
         potential_table = np.array([energies, forces], dtype=np.float).transpose()
         return potential_table
 
@@ -53,3 +53,13 @@ class PotentialParameters:
 
         potential_table = np.array([v_1 + v_2, -1.0 * (f_1 + f_2)], dtype=np.float).transpose()
         return potential_table
+
+
+if __name__ == '__main__':
+    LJ_TABLE = PotentialParameters(skin=0.3, potential_type='lennard_jones').load_lennard_jones_forces()
+    import matplotlib.pyplot as plt
+    r = 0.0001 * np.arange(25000) + 0.5
+    plt.plot(r, LJ_TABLE.transpose()[0])
+    plt.xlim(left=0, right=3)
+    plt.ylim(bottom=-1.5, top=1.5)
+    plt.show()

@@ -11,3 +11,5 @@ def get_empty_float_scalars(scalars_number: int) -> np.ndarray:
 
 def get_empty_int_scalars(scalars_number: int) -> np.ndarray:
     return np.zeros(scalars_number, dtype=np.int32)
+
+

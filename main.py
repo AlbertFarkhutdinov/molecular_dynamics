@@ -1,10 +1,29 @@
-from cProfile import run
-from pstats import Stats
-from datetime import datetime
+"""
+Liquid argon:
+_____________
+mass = 6.69E-26 kilograms
+distance = sigma = 0.341E-9 meters
+energy = epsilon = 1.65E-21 joules
+temperature = epsilon / k_B = 119.8 kelvin
+tau = sigma * sqrt(mass / epsilon) = 2.17E-12 seconds
+velocity = sigma / tau = 1.57E2 m/s
+force = epsilon/sigma = 4.85E-12 newtons
+pressure = epsilon / (sigma ^ 3) = 4.2E7 pascal = 4.2E2 atmospheres
+
+"""
+
+
+# from cProfile import run
 from math import pi
+import logging
+from os import getcwd
+from os.path import join
+from datetime import datetime
 
 import matplotlib.pyplot as plt
 import numpy as np
+import numba
+from pandas import DataFrame
 
 from dynamic_parameters import SystemDynamicParameters
 from external_parameters import ExternalParameters
@@ -12,6 +31,18 @@ from helpers import get_empty_float_scalars, get_empty_int_scalars, get_empty_ve
 from modeling_parameters import ModelingParameters
 from potential_parameters import PotentialParameters
 from static_parameters import SystemStaticParameters
+
+
+DATA_DIR = join(getcwd(), 'data')
+
+IS_LOGGING = True
+
+if IS_LOGGING:
+    logging.basicConfig(
+        level=logging.DEBUG,
+        filename=join(DATA_DIR, 'log.txt'),
+        format='%(asctime)s - %(message)s'
+    )
 
 
 class MolecularDynamics:
@@ -43,7 +74,7 @@ class MolecularDynamics:
     ):
         if thermostat_type == 'velocity_scaling':
             if stage_id == 1:
-                self.velocity_scaling_1()
+                return self.velocity_scaling_1()
             if stage_id == 2:
                 self.velocity_scaling_2(**kwargs)
         elif thermostat_type == 'nose_hoover':
@@ -53,21 +84,18 @@ class MolecularDynamics:
                 self.nose_hoover_2(**kwargs)
 
     def velocity_scaling_1(self):
-        self.dynamic.get_next_positions(self.model.time_step)
-        temperature = self.dynamic.temperature
-        # print(f'{temperature=}')
-        # if temperature == 0:
-        #     temperature = self.model.initial_temperature
-        # temperature += (
-        #         (1 if (self.external.temperature - temperature) >= 0 else -1)
-        #         * self.external.heating_velocity
-        #         * self.model.time_step
-        # )
-        # self.dynamic.get_next_velocities(
-        #     time_step=self.model.time_step,
-        #     # vel_coefficient=np.sqrt(self.external.temperature / temperature),
-        #     vel_coefficient=np.sqrt(self.model.initial_temperature / temperature),
-        # )
+        if IS_LOGGING:
+            logging.debug('velocity_scaling_1 - In;')
+
+        self.dynamic.get_next_positions(
+            time_step=self.model.time_step,
+        )
+        if IS_LOGGING:
+            logging.debug('got next positions;')
+        system_kinetic_energy = self.dynamic.system_kinetic_energy
+        temperature = self.dynamic.temperature(
+            system_kinetic_energy=system_kinetic_energy,
+        )
         self.model.initial_temperature += (
                 (1 if (self.external.temperature - self.model.initial_temperature) >= 0 else -1)
                 * self.external.heating_velocity
@@ -75,10 +103,18 @@ class MolecularDynamics:
         )
         if temperature == 0:
             temperature = self.model.initial_temperature
+        if IS_LOGGING:
+            logging.debug(f'Kinetic energy: {system_kinetic_energy}, temperature: {temperature}')
+            logging.debug(f'Initial temperature: {self.model.initial_temperature};')
+            logging.debug(f'Lambda: {np.sqrt(self.model.initial_temperature / temperature)};')
         self.dynamic.get_next_velocities(
             time_step=self.model.time_step,
             vel_coefficient=np.sqrt(self.model.initial_temperature / temperature),
         )
+        if IS_LOGGING:
+            logging.debug(f'Temperature after scaling: {self.dynamic.temperature()};')
+            logging.debug('velocity_scaling_1 - Out;\n')
+        return system_kinetic_energy, temperature
 
     def velocity_scaling_2(
             self,
@@ -88,8 +124,12 @@ class MolecularDynamics:
             potential_energy: float = None,
             pressure: float = None,
     ):
+        if IS_LOGGING:
+            logging.debug('velocity_scaling_2 - In;')
         _system_kinetic_energy = system_kinetic_energy or self.dynamic.system_kinetic_energy
-        _temperature = temperature or self.dynamic.temperature
+        _temperature = temperature or self.dynamic.temperature(
+            system_kinetic_energy=_system_kinetic_energy,
+        )
         if not all((potential_energy, virial)):
             _potential_energy, _virial = self.load_forces(
                 potential_table=self.potential.potential_table,
@@ -100,10 +140,16 @@ class MolecularDynamics:
             temperature=_temperature,
             virial=_virial,
         )
+        if IS_LOGGING:
+            logging.debug(f'Pressure: {_pressure};')
+            logging.debug(f'Temperature: {_temperature};')
         self.dynamic.get_next_velocities(
             time_step=self.model.time_step,
         )
         total_energy = _system_kinetic_energy + _potential_energy
+        if IS_LOGGING:
+            logging.debug(f'Temperature after scaling: {self.dynamic.temperature()};')
+            logging.debug('velocity_scaling_2 - Out;\n')
         return _pressure, total_energy
 
     def nose_hoover_1(self):
@@ -129,7 +175,7 @@ class MolecularDynamics:
                 + (
                         system_kinetic_energy
                         - 3.0 * self.static.particles_number * self.external.temperature
-                ) * self.model.time_step ** 2 / nose_hoover_thermostat_parameter
+                ) * self.model.time_step * self.model.time_step / nose_hoover_thermostat_parameter
         )
         lmbd += (
                         system_kinetic_energy
@@ -167,34 +213,58 @@ class MolecularDynamics:
                 / (self.static.get_density() * nose_hoover_barostat_parameter)
         )
         self.static.cell_dimensions *= 1.0 + xi * self.model.time_step
-        error = 1e-5
-        p_s = self.external.parameters['lambda']
-        ready = False
-        _iter = 0
-        while not ready and _iter < 50:
-            _iter += 1
-            p_o = p_s
-            ds = 0
-            pass  # TODO
+        pass  # TODO
 
     def load_forces(
             self,
             potential_table: np.ndarray,
     ):
+        if IS_LOGGING:
+            logging.debug('load_forces - In;')
         potential_energies = get_empty_float_scalars(self.static.particles_number)
+        self.dynamic.accelerations = get_empty_vectors(self.static.particles_number)
         virial = 0
         distances = self.dynamic.interparticle_distances
         if self.potential.update_test:
             self.update_list(distances=distances)
             self.potential.update_test = False
-        for i in range(self.static.particles_number - 1):
+
+        self.lf_cycle(
+            particles_number=self.static.particles_number,
+            verlet_list=self.verlet_lists['list'],
+            marker_1=self.verlet_lists['marker_1'],
+            marker_2=self.verlet_lists['marker_2'],
+            distances=distances,
+            r_cut=self.potential.r_cut,
+            potential_table=potential_table,
+            potential_energies=potential_energies,
+            virial=virial,
+            positions=self.dynamic.positions,
+            accelerations=self.dynamic.accelerations,
+        )
+        potential_energy = potential_energies.sum()
+        self.dynamic.displacements += (
+                self.dynamic.velocities * self.model.time_step
+                + self.dynamic.accelerations * self.model.time_step * self.model.time_step / 2.0
+        )
+        self.load_move_test()
+        if IS_LOGGING:
+            logging.debug(f'Potential energy: {potential_energy};')
+            logging.debug('load_forces - Out;\n')
+        return potential_energy, virial
+
+    @staticmethod
+    @numba.njit
+    def lf_cycle(particles_number, verlet_list, marker_1, marker_2, distances, r_cut, potential_table,
+                 potential_energies, virial, positions, accelerations):
+        for i in range(particles_number - 1):
             for k in range(
-                    self.verlet_lists['marker_1'][i],
-                    self.verlet_lists['marker_2'][i] + 1,
+                    marker_1[i],
+                    marker_2[i] + 1,
             ):
-                j = self.verlet_lists['list'][k]
+                j = verlet_list[k]
                 distance = distances[i][j]
-                if distance < self.potential.r_cut:
+                if distance < r_cut:
                     table_row = int((distance - 0.5) / 0.0001)
                     potential_ij = potential_table[table_row, 0]
                     force_ij = potential_table[table_row, 1]
@@ -202,43 +272,73 @@ class MolecularDynamics:
                     virial += force_ij * distance
                     acceleration_ij = (
                             force_ij
-                            * (self.dynamic.positions[i] - self.dynamic.positions[j])
+                            * (positions[i] - positions[j])
                             / distance
                     )
-                    self.dynamic.accelerations[i] += acceleration_ij
-                    self.dynamic.accelerations[j] -= acceleration_ij
-        potential_energy = potential_energies.sum()
-        self.load_move_test()
-        return potential_energy, virial
+                    accelerations[i] += acceleration_ij
+                    accelerations[j] -= acceleration_ij
+
+    @staticmethod
+    @numba.njit
+    def lf_logic(i, j, distance, potential_table, potential_energies, virial, positions, accelerations):
+        table_row = int((distance - 0.5) / 0.0001)
+        potential_ij = potential_table[table_row, 0]
+        force_ij = potential_table[table_row, 1]
+        potential_energies[j] += potential_ij
+        virial += force_ij * distance
+        acceleration_ij = (
+                force_ij
+                * (positions[i] - positions[j])
+                / distance
+        )
+        accelerations[i] += acceleration_ij
+        accelerations[j] -= acceleration_ij
 
     def update_list(self, distances: np.ndarray):
         advances = (distances < (self.potential.r_cut + self.potential.skin)).astype(np.int)
+        self.dynamic.displacements = self._update_list(
+            advances=advances,
+            particles_number=self.static.particles_number,
+            marker_1=self.verlet_lists['marker_1'],
+            marker_2=self.verlet_lists['marker_2'],
+            verlet_list=self.verlet_lists['list'],
+        )
+
+        self.dynamic.displacements = get_empty_vectors(self.static.particles_number)
+
+    @staticmethod
+    @numba.jit(
+        nopython=True,
+    )
+    def _update_list(
+            advances: np.ndarray,
+            particles_number: int,
+            marker_1: np.ndarray,
+            marker_2: np.ndarray,
+            verlet_list: np.ndarray,
+    ):
         k = 1
-        for i in range(self.static.particles_number - 1):
-            self.verlet_lists['marker_1'][i] = k
-            for j in range(i + 1, advances[i].nonzero()[0][-1] + 1):
-                self.verlet_lists['list'][k] = j
+        for i in range(particles_number - 1):
+            marker_1[i] = k
+            for j in range(i + 1, particles_number):
+                verlet_list[k] = j
                 if advances[i][j]:
                     k += advances[i][j]
-            self.verlet_lists['marker_2'][i] = k - 1
+            marker_2[i] = k - 1
 
     def load_move_test(self):
-        displacements = (
-                self.dynamic.velocities * self.model.time_step
-                + self.dynamic.accelerations * self.model.time_step ** 2 / 2.0
-        )
-        ds_1, ds_2 = 0, 0
+        ds = (self.dynamic.displacements * self.dynamic.displacements).sum(axis=1) ** 0.5
+        ds_1, ds_2 = 0.0, 0.0
         for i in range(self.static.particles_number):
-            ds = (displacements[i] ** 2).sum() ** 0.5
-            if ds >= ds_1:
+            if ds[i] >= ds_1:
                 ds_2 = ds_1
-                ds_1 = ds
-            elif ds >= ds_2:
-                ds_2 = ds
+                ds_1 = ds[i]
+            elif ds[i] >= ds_2:
+                ds_2 = ds[i]
         self.potential.update_test = (ds_1 + ds_2) > self.potential.skin
 
     def save_config(self, file_name: str = None):
-        file_name = file_name or 'system_config.txt'
+        file_name = join(DATA_DIR, file_name or 'system_config.txt')
         with open(file_name, mode='w', encoding='utf-8') as file:
             lines = [
                 '\n'.join(self.static.cell_dimensions.astype(str)),
@@ -260,7 +360,7 @@ class MolecularDynamics:
             file.write('\n'.join(lines))
 
     def load_save_config(self, file_name: str = None):
-        file_name = file_name or 'system_config.txt'
+        file_name = join(DATA_DIR, file_name or 'system_config.txt')
         with open(file_name, mode='r', encoding='utf-8') as file:
             lines = file.readlines()
             lines = [line.rstrip() for line in lines]
@@ -286,6 +386,8 @@ class MolecularDynamics:
 
     def save_system_parameters(
             self,
+            system_parameters: dict,
+            step: int,
             temperature: float = None,
             pressure: float = None,
             system_kinetic_energy: float = None,
@@ -304,52 +406,56 @@ class MolecularDynamics:
             temperature=_temperature,
             virial=_virial,
         )
-        parameters = {
-            'temperature': _temperature,
-            'pressure': _pressure,
-            'kinetic_energy': _system_kinetic_energy,
-            'potential_energy': _potential_energy,
-            'total_energy': _system_kinetic_energy + _potential_energy,
-        }
-        for key, value in parameters.items():
-            with open(f'system_{key}.txt', mode='a', encoding='utf-8') as file:
-                file.write(f'{self.model.time} {value}\n')
+        system_parameters['temperature'][step - 1] = _temperature
+        system_parameters['pressure'][step - 1] = _pressure
+        system_parameters['kinetic_energy'][step - 1] = _system_kinetic_energy
+        system_parameters['potential_energy'][step - 1] = _potential_energy
+        system_parameters['total_energy'][step - 1] = _system_kinetic_energy + _potential_energy
 
-    def load_lammps_trajectory(self, file_name: str = None):
-        file_name = file_name or 'system_config.txt'
-        with open(file_name, mode='a', encoding='utf-8') as file:
-            lines = [
-                'ITEM: TIMESTEP',
-                str(self.model.time_step),
-                'ITEM: NUMBER OF ATOMS',
-                str(self.static.particles_number),
-                'ITEM: BOX BOUNDS pp pp pp',
-                *(
-                    f'{-dim / 2} {dim / 2}'
-                    for dim in self.static.cell_dimensions
-                ),
-                'ITEM: ATOMS id type x y z',
-                *(
-                    f'{i + 1} 0 {pos[0]} {pos[1]} {pos[2]}'
-                    for i, pos in enumerate(self.dynamic.positions)
-                ),
-                '\n',
-            ]
-            file.writelines('\n'.join(lines))
+    def load_lammps_trajectory(self):
+        lines = [
+            'ITEM: TIMESTEP',
+            str(self.model.time),
+            'ITEM: NUMBER OF ATOMS',
+            str(self.static.particles_number),
+            'ITEM: BOX BOUNDS pp pp pp',
+            *(
+                f'{-dim / 2} {dim / 2}'
+                for dim in self.static.cell_dimensions
+            ),
+            'ITEM: ATOMS id type x y z',
+            *(
+                f'{i + 1} 0 {pos[0]} {pos[1]} {pos[2]}'
+                for i, pos in enumerate(self.dynamic.positions)
+            ),
+            '\n',
+        ]
+        return '\n'.join(lines)
 
     def run_md(self):
-        # self.load_save_config()
+        start = datetime.now()
+        if IS_LOGGING:
+            logging.debug('Start.')
+        potential_table = self.potential.potential_table
+        lammps_trajectories = []
+        system_parameters = {
+            'temperature': get_empty_float_scalars(self.model.iterations_numbers),
+            'pressure': get_empty_float_scalars(self.model.iterations_numbers),
+            'kinetic_energy': get_empty_float_scalars(self.model.iterations_numbers),
+            'potential_energy': get_empty_float_scalars(self.model.iterations_numbers),
+            'total_energy': get_empty_float_scalars(self.model.iterations_numbers),
+        }
         for step in range(1, self.model.iterations_numbers + 1):
             self.model.time += self.model.time_step
-            self.system_dynamics(
+            if IS_LOGGING:
+                logging.debug(f'Step: {step}; Time: {self.model.time:.3f};')
+            system_kinetic_energy, temperature = self.system_dynamics(
                 stage_id=1,
                 thermostat_type='velocity_scaling',
             )
             self.dynamic.boundary_conditions()
-            system_kinetic_energy = self.dynamic.system_kinetic_energy
-            temperature = self.dynamic.temperature
             potential_energy, virial = self.load_forces(
-                potential_table=self.potential.potential_table,
+                potential_table=potential_table,
             )
             pressure = self.dynamic.get_pressure(
                 temperature=temperature,
@@ -367,26 +473,68 @@ class MolecularDynamics:
                 thermostat_type='velocity_scaling',
                 **parameters,
             )
-            # self.save_config(file_name=f'system_config_{step}.txt')
+
             self.save_system_parameters(
+                system_parameters=system_parameters,
+                step=step,
                 **parameters
             )
-            self.load_lammps_trajectory()
+            lammps_trajectories.append(
+                self.load_lammps_trajectory()
+            )
             print(
                 f'Step: {step}/{self.model.iterations_numbers};',
-                f'\tTime = {self.model.time};',
-                f'\tT = {temperature:.30f};',
-                f'\tP = {pressure:.30f};',
-                'Calculation completed.\n',
+                f'\tTime = {self.model.time:.3f};',
+                f'\tT = {temperature:.5f};',
+                f'\tP = {pressure:.5f};\n',
                 sep='\n',
             )
+            if IS_LOGGING:
+                logging.debug('End of iteration.\n')
+            if step % 1000 == 0:
+                _start = datetime.now()
+                with open(
+                        join(DATA_DIR, 'system_config.txt'),
+                        mode='a',
+                        encoding='utf-8'
+                ) as file:
+                    file.write('\n'.join(lammps_trajectories))
+                print(
+                    f'LAMMPS trajectories for last 1000 steps are saved. '
+                    f'Time of saving: {datetime.now() - _start}'
+                )
+                lammps_trajectories = []
 
-    def run_rdf(self, steps_number: int = 1000):
+        print(f'Calculation completed. Time of calculation: {datetime.now() - start}')
+
+        _start = datetime.now()
+        with open(
+                join(DATA_DIR, 'system_config.txt'),
+                mode='a',
+                encoding='utf-8'
+        ) as file:
+            file.write('\n'.join(lammps_trajectories))
+        print(
+            f'LAMMPS trajectories for last {self.model.iterations_numbers % 1000} steps are saved. '
+            f'Time of saving: {datetime.now() - _start}'
+        )
+
+        start = datetime.now()
+        DataFrame(system_parameters).to_csv(
+            join(DATA_DIR, 'system_parameters.csv'),
+            sep=';',
+            index=False
+        )
+
+        print(f'System parameters are saved. Time of saving: {datetime.now() - start}')
+
+    def run_rdf(self, steps_number: int = 1000, file_name: str = None):
+        file_name = join(DATA_DIR, file_name or 'system_config.txt')
         layer_thickness = 0.01
         begin_step = 1
         end_step = steps_number
         rdf = get_empty_float_scalars(10 * self.static.particles_number)
-        with open('system_config.txt', mode='r', encoding='utf8') as file:
+        with open(file_name, mode='r', encoding='utf8') as file:
             lines = file.readlines()
             for step in range(begin_step, end_step + 1):
                 for i in range(self.static.particles_number):
@@ -404,7 +552,8 @@ class MolecularDynamics:
                 radiuses = layer_thickness * (np.arange(max_layer_number + 1) + 0.5)
                 rdf[:max_layer_number + 1] += (
                         2.0 * self.static.get_cell_volume()
-                        / (4.0 * pi * radiuses ** 2 * self.static.particles_number ** 2)
+                        / (4.0 * pi * radiuses * radiuses
+                           * self.static.particles_number * self.static.particles_number)
                         * particles_in_layer / layer_thickness
                 )
                 print(f'Step: {step}/{end_step};')
@@ -412,10 +561,10 @@ class MolecularDynamics:
             rdf = rdf[:np.nonzero(rdf)[0][-1]]
             radiuses = layer_thickness * (np.arange(rdf.size) + 0.5)
             rdf = rdf / (end_step - begin_step + 1)
-            # mask = (radiuses <= self.static.cell_dimensions[0] / 2.0)
             for i, radius in enumerate(radiuses):
                 if radius <= self.static.cell_dimensions[0] / 2.0:
                     file.write(f'{radius} {rdf[i]}\n')
+        print('Calculation completed.')
 
     @staticmethod
     def plot_rdf(file_name: str):
@@ -433,37 +582,34 @@ class MolecularDynamics:
 
 
 if __name__ == '__main__':
-
-    start = datetime.now()
-    # Liquid argon:
-    # mass = 6.69E-26 kilograms
-    # distance = sigma = 0.341E-9 meters
-    # energy (temperature) = epsilon = 1.65E-21 joules (119.8 kelvin)
-    # tau = sigma * sqrt(mass / epsilon) = 2.17E-12 seconds
-    # velocity = sigma / tau = 1.57E2 m/s
-    # force = epsilon/sigma = 4.85E-12 newtons
-    # pressure = epsilon / (sigma ^ 3) = 4.2E7 pascal = 4.2E2 atmospheres
+    np.set_printoptions(threshold=5000)
 
     static_1 = SystemStaticParameters(
         init_type=1,
         lattice_constant=1.75,
         particles_number=(7, 7, 7),
+        # particles_number=(2, 2, 2),
         # particles_number=1372,
         crystal_type='гцк',
-    )
-    dynamic_1 = SystemDynamicParameters(
-        static=static_1,
     )
     external_1 = ExternalParameters(
         environment_type='velocity_scaling',
         heating_velocity=0.02,
         temperature=2.8,
     )
+    # INITIAL_TIME_STEP = 0.005
+    # INITIAL_ITERATION_NUMBERS = 40000
+    INITIAL_TIME_STEP = 0.001
+    INITIAL_ITERATION_NUMBERS = 200000
     model_1 = ModelingParameters(
-        # iterations_numbers=40000,
-        iterations_numbers=1,
-        time_step=0.005,
-        initial_temperature=2.8,
+        iterations_numbers=INITIAL_ITERATION_NUMBERS,
+        # iterations_numbers=1000,
+        time_step=INITIAL_TIME_STEP,
+        initial_temperature=1e-5,
+    )
+    dynamic_1 = SystemDynamicParameters(
+        static=static_1,
+        # temperature=model_1.initial_temperature,
     )
     potential_1 = PotentialParameters(
         potential_type='lennard_jones',
@@ -476,7 +622,9 @@ if __name__ == '__main__':
         model=model_1,
         potential=potential_1,
     )
-    # run('md_sample_1.run_md()', sort=2)
+    # run(
+    #     'md_sample_1.run_md()',
+    #     sort=2,
+    # )
     md_sample_1.run_md()
-    run('md_sample_1.run_rdf(50)', sort=2)
-    print(datetime.now() - start)
+    # run('md_sample_1.run_rdf(50)', sort=2)

@@ -11,6 +11,7 @@ class SystemDynamicParameters:
     def __init__(
             self,
             static: SystemStaticParameters,
+            temperature: float = None,
     ):
         self.static = static
         self.particles_number = static.particles_number
@@ -22,6 +23,21 @@ class SystemDynamicParameters:
             self.generate_ordered_state()
         elif self.static.init_type == 2:
             self.generate_random_state()
+        if temperature:
+            self.get_initial_velocities(temperature=temperature)
+        self.displacements = get_empty_vectors(self.particles_number)
+
+    def get_initial_velocities(self, temperature: float) -> None:
+        _sigma = np.sqrt(temperature)
+        velocities = get_empty_vectors(self.particles_number).transpose()
+        for i in range(3):
+            velocities[i] = np.random.normal(0.0, _sigma, self.particles_number)
+            velocities[i] -= velocities[i].sum() / self.particles_number
+
+        scale_factor = np.sqrt(3.0 * temperature * self.particles_number / (velocities * velocities).sum())
+        for i in range(3):
+            velocities[i] *= scale_factor
+        self.velocities = velocities.transpose()
 
     def generate_ordered_state(self) -> None:
         r_cell = get_empty_vectors(self.static.nb)
@@ -57,15 +73,17 @@ class SystemDynamicParameters:
 
     @property
     def system_kinetic_energy(self) -> float:
-        return (self.velocities ** 2).sum() / 2.0
+        return (self.velocities * self.velocities).sum() / 2.0
 
-    @property
-    def temperature(self) -> float:
-        return 2.0 * self.system_kinetic_energy / 3.0 / self.particles_number
+    def temperature(self, system_kinetic_energy=None) -> float:
+        _system_kinetic_energy = system_kinetic_energy or self.system_kinetic_energy
+        return 2.0 * _system_kinetic_energy / 3.0 / self.particles_number
 
     @property
     def interparticle_distances(self):
-        return squareform(pdist(self.positions, 'euclidean'))
+        return squareform(
+            pdist(self.positions, 'euclidean')
+        )
 
     def get_pressure(
             self,
@@ -75,7 +93,7 @@ class SystemDynamicParameters:
             cell_volume: float = None,
     ) -> float:
         _density = density or self.static.get_density()
-        _temperature = temperature or self.temperature
+        _temperature = temperature or self.temperature()
         _cell_volume = cell_volume or self.static.get_cell_volume()
         return _density * _temperature + virial / (3 * _cell_volume)
 
@@ -92,7 +110,7 @@ class SystemDynamicParameters:
         self.positions += (
                 self.velocities * time_step
                 + (self.accelerations - acc_coefficient * self.velocities)
-                * (time_step ** 2) / 2.0
+                * (time_step * time_step) / 2.0
         )
 
     def get_next_velocities(
@@ -108,37 +126,17 @@ class SystemDynamicParameters:
         )
 
     def boundary_conditions(self) -> None:
-        self.positions -= self.cell_dimensions * (
-                self.positions >= self.cell_dimensions / 2.0
-        ).astype(np.float)
-        self.positions += self.cell_dimensions * (
-                self.positions < -self.cell_dimensions / 2.0
-        ).astype(np.float)
+        while (self.positions >= self.cell_dimensions / 2.0).any():
+            self.positions -= self.cell_dimensions * (
+                    self.positions >= self.cell_dimensions / 2.0
+            ).astype(np.float)
+        while (self.positions < -self.cell_dimensions / 2.0).any():
+            self.positions += self.cell_dimensions * (
+                    self.positions < -self.cell_dimensions / 2.0
+            ).astype(np.float)
 
     def get_radius_vector(self, index_1: int, index_2):
         return self.positions[index_1] - self.positions[index_2]
-        # return self._get_radius_vector(
-        #     pos_1=self.positions[index_1],
-        #     pos_2=self.positions[index_2],
-        #     # dim=self.cell_dimensions,
-        # )
-
-    # @staticmethod
-    # @numba.njit(numba.float64[:](numba.float64[:], numba.float64[:]))
-    # def _get_radius_vector(
-    #         pos_1,
-    #         pos_2,
-    #         # dim,
-    # ):
-    #     r_ij = pos_1 - pos_2
-    #     # _r_ij = r_ij
-    #     # r_ij -= (
-    #     #         (r_ij / dim).astype(np.int32)
-    #     #         * dim
-    #     # )
-    #     # if (r_ij - _r_ij).any():
-    #     #     print(_r_ij, r_ij)
-    #     return r_ij
 
     @staticmethod
     @numba.njit(numba.float64(numba.float64[:]))
