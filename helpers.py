@@ -13,3 +13,9 @@ def get_empty_int_scalars(scalars_number: int) -> np.ndarray:
     return np.zeros(scalars_number, dtype=np.int32)
 
 
+def sign(value: float) -> int:
+    if value > 0:
+        return 1
+    if value < 0:
+        return -1
+    return 0

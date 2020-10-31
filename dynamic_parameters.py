@@ -4,6 +4,7 @@ from scipy.spatial.distance import pdist, squareform
 
 from static_parameters import SystemStaticParameters
 from helpers import get_empty_vectors
+from log_config import logger_wraps
 
 
 class SystemDynamicParameters:
@@ -18,6 +19,9 @@ class SystemDynamicParameters:
         self.cell_dimensions = static.cell_dimensions
         self.positions = get_empty_vectors(self.particles_number)
         self.velocities = get_empty_vectors(self.particles_number)
+        self.v = get_empty_vectors(self.particles_number)
+        self.vo = get_empty_vectors(self.particles_number)
+        self.b = get_empty_vectors(self.particles_number)
         self.accelerations = get_empty_vectors(self.particles_number)
         if self.static.init_type == 1:
             self.generate_ordered_state()
@@ -39,6 +43,7 @@ class SystemDynamicParameters:
             velocities[i] *= scale_factor
         self.velocities = velocities.transpose()
 
+    @logger_wraps()
     def generate_ordered_state(self) -> None:
         r_cell = get_empty_vectors(self.static.nb)
         if self.static.crystal_type == 'гцк':
@@ -60,6 +65,7 @@ class SystemDynamicParameters:
                         )
         self.load_system_center()
 
+    @logger_wraps()
     def generate_random_state(self) -> None:
         self.positions[0] = np.random.random(3) * self.static.cell_dimensions
         for j in range(1, self.static.particles_number):
@@ -67,7 +73,10 @@ class SystemDynamicParameters:
             while is_distance_too_small:
                 self.positions[j] = np.random.random(3) * self.static.cell_dimensions
                 for i in range(j):
-                    distance = self.get_distance(i, j)
+                    # radius_vector = np.mod(self.positions[i] - self.positions[j], self.cell_dimensions)
+                    radius_vector = self.positions[i] - self.positions[j]
+                    radius_vector -= (radius_vector / self.cell_dimensions).astype(np.int32) * self.cell_dimensions
+                    distance = (radius_vector ** 2).sum()
                     is_distance_too_small = (distance < 1.1)
         self.load_system_center()
 
@@ -85,23 +94,31 @@ class SystemDynamicParameters:
             pdist(self.positions, 'euclidean')
         )
 
+    @staticmethod
+    @numba.jit(nopython=True)
+    def _interparticle_distances(positions):
+        return pdist(positions, 'euclidean')
+
     def get_pressure(
             self,
             virial: float,
-            temperature: float = None,
+            temperature: float,
             density: float = None,
             cell_volume: float = None,
     ) -> float:
         _density = density or self.static.get_density()
-        _temperature = temperature or self.temperature()
         _cell_volume = cell_volume or self.static.get_cell_volume()
-        return _density * _temperature + virial / (3 * _cell_volume)
+        return _density * temperature + virial / (3 * _cell_volume)
 
+    @property
+    def system_center(self):
+        return self.positions.sum(axis=0) / self.particles_number
+
+    @logger_wraps()
     def load_system_center(self) -> None:
-        system_center = self.positions.sum(axis=0)
-        system_center = system_center / self.particles_number
-        self.positions -= system_center
+        self.positions -= self.system_center
 
+    @logger_wraps()
     def get_next_positions(
             self,
             time_step: float,
@@ -113,6 +130,7 @@ class SystemDynamicParameters:
                 * (time_step * time_step) / 2.0
         )
 
+    @logger_wraps()
     def get_next_velocities(
             self,
             time_step: float,
@@ -125,15 +143,38 @@ class SystemDynamicParameters:
                 * time_step / 2.0
         )
 
+    @logger_wraps()
     def boundary_conditions(self) -> None:
-        while (self.positions >= self.cell_dimensions / 2.0).any():
-            self.positions -= self.cell_dimensions * (
-                    self.positions >= self.cell_dimensions / 2.0
-            ).astype(np.float)
-        while (self.positions < -self.cell_dimensions / 2.0).any():
-            self.positions += self.cell_dimensions * (
-                    self.positions < -self.cell_dimensions / 2.0
-            ).astype(np.float)
+        self._boundary_conditions(
+            cell_dimensions=self.cell_dimensions,
+            particles_number=self.particles_number,
+            positions=self.positions
+        )
+
+    @staticmethod
+    @numba.jit(nopython=True)
+    def _boundary_conditions(
+            cell_dimensions: np.ndarray,
+            particles_number: int,
+            positions: np.ndarray,
+    ):
+        for i in range(particles_number):
+            for j in range(3):
+                if positions[i][j] >= cell_dimensions[j] / 2.0:
+                    # print(i, j, positions[i])
+                    positions[i][j] -= cell_dimensions[j]
+                    # print(i, j, positions[i])
+                if positions[i][j] < -cell_dimensions[j] / 2.0:
+                    # print(i, j, positions[i])
+                    positions[i][j] += cell_dimensions[j]
+                    # print(i, j, positions[i])
+
+    def distance_refold(self):
+        for i in range(self.particles_number - 1):
+            for j in range(i + 1, self.particles_number):
+                # radius_vector = np.mod(self.get_radius_vector(i, j), self.cell_dimensions)
+                radius_vector = self.get_radius_vector(i, j)
+                radius_vector -= (radius_vector / self.cell_dimensions).astype(np.int) * self.cell_dimensions
 
     def get_radius_vector(self, index_1: int, index_2):
         return self.positions[index_1] - self.positions[index_2]
@@ -143,7 +184,12 @@ class SystemDynamicParameters:
     def _get_distance(radius_vector):
         return np.linalg.norm(radius_vector)
 
-    def get_distance(self, index_1: int, index_2: int, radius_vector: np.ndarray = None):
-        if radius_vector is None:
-            radius_vector = self.get_radius_vector(index_1, index_2)
-        return self._get_distance(radius_vector)
+    def get_distance(
+            self,
+            index_1: int,
+            index_2: int,
+    ):
+        # radius_vector = np.mod(self.positions[index_1] - self.positions[index_2], self.cell_dimensions)
+        radius_vector = self.positions[index_1] - self.positions[index_2]
+        radius_vector -= (radius_vector / self.cell_dimensions).astype(numba.int32) * self.cell_dimensions
+        return (radius_vector ** 2).sum()

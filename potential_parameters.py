@@ -21,9 +21,10 @@ class PotentialParameters:
             self.r_cut *= 1.94
 
     def load_lennard_jones_forces(self):
+        # forces - это величины -dU/dr. Сила получается домножением на единичный вектор в направлении r_ij
         sigma_pow6, epsilon_x4, r_cut = 1.0, 4.0, self.r_cut
         table_size = 25000
-        r_ij = 0.0001 * np.arange(table_size) + 0.5
+        r_ij = 0.5 + 0.0001 * np.arange(1, table_size + 1)
         energy_r_cut = epsilon_x4 * (sigma_pow6 * sigma_pow6 / (r_cut ** 12) - sigma_pow6 / (r_cut ** 6))
         energies = epsilon_x4 * (sigma_pow6 * sigma_pow6 / (r_ij ** 12) - sigma_pow6 / (r_ij ** 6)) - energy_r_cut
         forces = 6.0 * epsilon_x4 * (2.0 * sigma_pow6 * sigma_pow6 / (r_ij ** 13) - sigma_pow6 / (r_ij ** 7))
@@ -33,7 +34,7 @@ class PotentialParameters:
     def load_dzugutov_forces(self):
         sigma, epsilon, r_cut = 1.0, 1.0, self.r_cut
         table_size = 15000
-        r_ij = 0.0001 * np.arange(table_size) + 0.5
+        r_ij = 0.5 + 0.0001 * np.arange(1, table_size + 1)
         aa, bb, a, c, d, m = 5.82, 1.28, 1.87, 1.1, 0.27, 16
         v_1 = get_empty_float_scalars(table_size)
         v_2 = get_empty_float_scalars(table_size)
