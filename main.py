@@ -78,6 +78,11 @@ class MolecularDynamics:
         temperature = self.dynamic.temperature(
             system_kinetic_energy=system_kinetic_energy,
         )
+
+        # if temperature == 0:
+        #     temperature = self.model.initial_temperature
+        # lmbd = (self.external.temperature / temperature) ** 0.5
+
         self.model.initial_temperature += (
                 sign(self.external.temperature - self.model.initial_temperature)
                 * self.external.heating_velocity
@@ -86,6 +91,7 @@ class MolecularDynamics:
         if temperature == 0:
             temperature = self.model.initial_temperature
         lmbd = (self.model.initial_temperature / temperature) ** 0.5
+
         debug_info(f'Kinetic Energy: {system_kinetic_energy};')
         debug_info(f'Temperature before velocity_scaling_1: {temperature};')
         debug_info(f'Initial Temperature: {self.model.initial_temperature};')
@@ -124,13 +130,9 @@ class MolecularDynamics:
         potential_energies = get_empty_float_scalars(self.static.particles_number)
         self.dynamic.accelerations = get_empty_vectors(self.static.particles_number)
         if self.potential.update_test:
-            self.verlet_lists = {
-                'marker_1': get_empty_int_scalars(self.static.particles_number),
-                'marker_2': get_empty_int_scalars(self.static.particles_number),
-                'list': get_empty_int_scalars(100 * self.static.particles_number),
-            }
             debug_info(f'update_test = True')
             self.update_list()
+            self.dynamic.displacements = get_empty_vectors(self.static.particles_number)
             self.potential.update_test = False
 
         virial = self.lf_cycle(
@@ -145,6 +147,8 @@ class MolecularDynamics:
             accelerations=self.dynamic.accelerations,
             cell_dimensions=self.static.cell_dimensions,
         )
+        acc_mag = (self.dynamic.accelerations ** 2).sum(axis=1) ** 0.2
+        debug_info(f'Mean and max acceleration: {acc_mag.mean()}, {acc_mag.max()}')
         potential_energy = potential_energies.sum()
         self.dynamic.displacements += (
                 self.dynamic.velocities * self.model.time_step
@@ -171,34 +175,51 @@ class MolecularDynamics:
     ):
         virial = 0
         for i in range(particles_number - 1):
+            # for j in range(i + 1, particles_number):
             for k in range(
                     marker_1[i],
                     marker_2[i] + 1,
             ):
                 j = verlet_list[k]
                 radius_vector = positions[i] - positions[j]
-                radius_vector -= (radius_vector / cell_dimensions).astype(numba.int32) * cell_dimensions
+                if radius_vector[0] > cell_dimensions[0] / 2:
+                    radius_vector[0] -= cell_dimensions[0]
+                elif radius_vector[0] < -cell_dimensions[0] / 2:
+                    radius_vector[0] += cell_dimensions[0]
+                if radius_vector[1] > cell_dimensions[1] / 2:
+                    radius_vector[1] -= cell_dimensions[1]
+                elif radius_vector[1] < -cell_dimensions[1] / 2:
+                    radius_vector[1] += cell_dimensions[1]
+                if radius_vector[2] > cell_dimensions[2] / 2:
+                    radius_vector[2] -= cell_dimensions[2]
+                elif radius_vector[2] < -cell_dimensions[2] / 2:
+                    radius_vector[2] += cell_dimensions[2]
+                # radius_vector -= (2 * radius_vector / cell_dimensions).astype(numba.int32) * cell_dimensions
                 distance_squared = (radius_vector ** 2).sum()
                 if distance_squared < r_cut * r_cut:
                     # TODO обеспечить защиту от перекрытий
                     # При расстояниях меньших 0.5 получаем отрицательный индекс
                     # А значит неправильные потенциал и ускорение.
                     table_row = int((distance_squared ** 0.5 - 0.5) / 0.0001)
-                    assert table_row >= 1
+                    # table_row = int((distance_squared ** 0.5) / 0.0001)
                     potential_ij = potential_table[table_row - 1, 0]
-                    force_ij = potential_table[table_row - 1, 1]
+                    force_ij = potential_table[table_row - 1, 1]  # / (distance_squared ** 0.5)
                     potential_energies[i] += potential_ij / 2.0
                     potential_energies[j] += potential_ij / 2.0
                     virial += force_ij * distance_squared
-                    acceleration_ij = force_ij * radius_vector  # / (distance_squared ** 0.5)
-                    if distance_squared ** 0.5 <= 0.50:
-                        print(i, j, distance_squared ** 0.5)
+                    acceleration_ij = force_ij * radius_vector
                     accelerations[i] += acceleration_ij
                     accelerations[j] -= acceleration_ij
+                    assert table_row >= 1
         return virial
 
     @logger_wraps()
     def update_list(self):
+        self.verlet_lists = {
+            'marker_1': get_empty_int_scalars(self.static.particles_number),
+            'marker_2': get_empty_int_scalars(self.static.particles_number),
+            'list': get_empty_int_scalars(100 * self.static.particles_number),
+        }
         advances = get_empty_int_scalars(self.static.particles_number)
         self._update_list(
             rng=self.potential.r_cut + self.potential.skin,
@@ -210,7 +231,6 @@ class MolecularDynamics:
             marker_2=self.verlet_lists['marker_2'],
             verlet_list=self.verlet_lists['list'],
         )
-        self.dynamic.displacements = get_empty_vectors(self.static.particles_number)
 
     @staticmethod
     @numba.jit(nopython=True)
@@ -228,7 +248,19 @@ class MolecularDynamics:
         for i in range(particles_number - 1):
             for j in range(i + 1, particles_number):
                 radius_vector = positions[i] - positions[j]
-                radius_vector -= (radius_vector / cell_dimensions).astype(numba.int32) * cell_dimensions
+                if radius_vector[0] > cell_dimensions[0] / 2:
+                    radius_vector[0] -= cell_dimensions[0]
+                elif radius_vector[0] < -cell_dimensions[0] / 2:
+                    radius_vector[0] += cell_dimensions[0]
+                if radius_vector[1] > cell_dimensions[1] / 2:
+                    radius_vector[1] -= cell_dimensions[1]
+                elif radius_vector[1] < -cell_dimensions[1] / 2:
+                    radius_vector[1] += cell_dimensions[1]
+                if radius_vector[2] > cell_dimensions[2] / 2:
+                    radius_vector[2] -= cell_dimensions[2]
+                elif radius_vector[2] < -cell_dimensions[2] / 2:
+                    radius_vector[2] += cell_dimensions[2]
+                # radius_vector -= (2 * radius_vector / cell_dimensions).astype(numba.int32) * cell_dimensions
                 distance_squared = (radius_vector ** 2).sum()
                 if distance_squared < rng * rng:
                     advances[j] = 1
@@ -253,9 +285,9 @@ class MolecularDynamics:
                 ds_2 = ds
         self.potential.update_test = (ds_1 + ds_2) > self.potential.skin
 
-    @logger_wraps()
+    # @logger_wraps()
     def save_config(self, file_name: str = None):
-        file_name = join(DATA_DIR, file_name or 'system_config.txt')
+        file_name = join(DATA_DIR, file_name or 'system_config_149.txt')
         with open(file_name, mode='w', encoding='utf-8') as file:
             lines = [
                 '\n'.join(self.static.cell_dimensions.astype(str)),
@@ -275,10 +307,11 @@ class MolecularDynamics:
                 ],
             ]
             file.write('\n'.join(lines))
+        # return '\n'.join(lines)
 
     @logger_wraps()
     def load_save_config(self, file_name: str = None):
-        file_name = join(DATA_DIR, file_name or 'system_config.txt')
+        file_name = join(DATA_DIR, file_name or 'system_config_149.txt')
         with open(file_name, mode='r', encoding='utf-8') as file:
             lines = file.readlines()
             lines = [line.rstrip() for line in lines]
@@ -348,19 +381,19 @@ class MolecularDynamics:
             stage_id=1,
             thermostat_type='velocity_scaling',
         )
-
         system_center_1 = self.dynamic.system_center
         debug_info(f'System center after system_dynamics_1: {system_center_1}')
-        self.dynamic.boundary_conditions()
+        # print(f'System center after system_dynamics_1: {system_center_1}')
+        # self.dynamic.boundary_conditions()
         system_center_2 = self.dynamic.system_center
         if IS_LOGGED and any(system_center_2 > 1e-10):
             logger.warning(f'Drift of system center!')
         debug_info(f'System center after boundary_conditions: {system_center_2}')
+        # print(f'System center after boundary_conditions: {system_center_2}')
 
         potential_energy, virial = self.load_forces(
             potential_table=potential_table,
         )
-
         pressure = self.dynamic.get_pressure(
             temperature=temperature,
             virial=virial,
@@ -406,6 +439,7 @@ class MolecularDynamics:
                 f'LAMMPS trajectories for last 1000 steps are saved. '
                 f'Time of saving: {datetime.now() - _start}'
             )
+            lammps_trajectories = []
 
     @logger_wraps()
     def run_md(self):
@@ -446,13 +480,14 @@ class MolecularDynamics:
         start = datetime.now()
         DataFrame(system_parameters).to_csv(
             join(DATA_DIR, 'system_parameters.csv'),
-            sep=';'
+            sep=';',
+            index=False,
         )
 
         print(f'System parameters are saved. Time of saving: {datetime.now() - start}')
 
     def run_rdf(self, steps_number: int = 1000, file_name: str = None):
-        file_name = join(DATA_DIR, file_name or 'system_config.txt')
+        file_name = join(DATA_DIR, file_name or 'system_config_149.txt')
         layer_thickness = 0.01
         begin_step = 1
         end_step = steps_number
@@ -522,10 +557,9 @@ if __name__ == '__main__':
     INITIAL_ITERATION_NUMBERS = 40000
     model_1 = ModelingParameters(
         iterations_numbers=INITIAL_ITERATION_NUMBERS,
-        # iterations_numbers=3000,
         time_step=INITIAL_TIME_STEP,
-        # initial_temperature=2.8,
         initial_temperature=1e-5,
+        # initial_temperature=2.8,
     )
     dynamic_1 = SystemDynamicParameters(
         static=static_1,
