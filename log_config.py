@@ -2,7 +2,7 @@ from datetime import date
 import functools
 from os.path import join
 
-from constants import DATA_DIR, IS_LOGGED
+from constants import PATH_TO_DATA, IS_LOGGED
 
 
 if IS_LOGGED:
@@ -51,7 +51,7 @@ def debug_info(*args, **kwargs):
 if IS_LOGGED:
     logger.remove()
     logger.add(
-        join(DATA_DIR, f'log_{date.today()}.log'),
+        join(PATH_TO_DATA, f'log_{date.today()}.log'),
         format="{time:YYYY-MM-dd HH:mm:ss,SSS} | {level} | {message}",
         level="DEBUG",
         rotation='00:00',

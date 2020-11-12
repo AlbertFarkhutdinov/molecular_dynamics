@@ -24,15 +24,16 @@ import matplotlib.pyplot as plt
 import numpy as np
 from pandas import DataFrame
 
-from constants import DATA_DIR, IS_LOGGED
+from constants import PATH_TO_DATA, IS_LOGGED
 from dynamic_parameters import SystemDynamicParameters
 from external_parameters import ExternalParameters
-from helpers import get_empty_float_scalars, get_empty_int_scalars, get_empty_vectors, sign
+from helpers import get_empty_float_scalars, get_empty_int_scalars
 from log_config import debug_info, logger, logger_wraps
 from modeling_parameters import ModelingParameters
-from numba_procedures import lf_cycle, update_list_cycle
 from potential_parameters import PotentialParameters
+from saver import Saver
 from static_parameters import SystemStaticParameters
+from verlet import Verlet
 
 
 class MolecularDynamics:
@@ -48,311 +49,14 @@ class MolecularDynamics:
         self.potential = potential
         self.static = static
         self.dynamic = dynamic
-        self.external = external
         self.model = model
-        self.verlet_lists = {
-            'marker_1': get_empty_int_scalars(self.static.particles_number),
-            'marker_2': get_empty_int_scalars(self.static.particles_number),
-            'list': get_empty_int_scalars(100 * self.static.particles_number),
-        }
-
-    @logger_wraps()
-    def system_dynamics(
-            self,
-            stage_id: int,
-            thermostat_type: str,
-            **kwargs,
-    ):
-        if thermostat_type == 'velocity_scaling':
-            if stage_id == 1:
-                return self.velocity_scaling_1()
-            if stage_id == 2:
-                self.velocity_scaling_2(**kwargs)
-        elif thermostat_type == 'nose_hoover':
-            raise ValueError('`nose_hoover` does not exist.')
-
-    @logger_wraps()
-    def velocity_scaling_1(self):
-        self.dynamic.get_next_positions(
-            time_step=self.model.time_step,
+        self.verlet = Verlet(
+            static=self.static,
+            dynamic=self.dynamic,
+            external=external,
+            model=self.model,
+            potential=self.potential,
         )
-        system_kinetic_energy = self.dynamic.system_kinetic_energy
-        temperature = self.dynamic.temperature(
-            system_kinetic_energy=system_kinetic_energy,
-        )
-
-        # if temperature == 0:
-        #     temperature = self.model.initial_temperature
-        # lmbd = (self.external.temperature / temperature) ** 0.5
-
-        self.model.initial_temperature += (
-                sign(self.external.temperature - self.model.initial_temperature)
-                * self.external.heating_velocity
-                * self.model.time_step
-        )
-        if temperature == 0:
-            temperature = self.model.initial_temperature
-        lmbd = (self.model.initial_temperature / temperature) ** 0.5
-
-        debug_info(f'Kinetic Energy: {system_kinetic_energy};')
-        debug_info(f'Temperature before velocity_scaling_1: {temperature};')
-        debug_info(f'Initial Temperature: {self.model.initial_temperature};')
-        debug_info(f'Lambda: {lmbd};')
-        self.dynamic.get_next_velocities(
-            time_step=self.model.time_step,
-            vel_coefficient=lmbd,
-        )
-        debug_info(f'Temperature after velocity_scaling_1: {self.dynamic.temperature()};')
-        return system_kinetic_energy, temperature
-
-    @logger_wraps()
-    def velocity_scaling_2(
-            self,
-            potential_energy: float,
-            system_kinetic_energy: float,
-            pressure: float,
-    ):
-        temperature = self.dynamic.temperature(
-            system_kinetic_energy=system_kinetic_energy,
-        )
-        debug_info(f'Pressure: {pressure};')
-        debug_info(f'Temperature before velocity_scaling_2: {temperature};')
-        self.dynamic.get_next_velocities(
-            time_step=self.model.time_step,
-        )
-        total_energy = system_kinetic_energy + potential_energy
-        debug_info(f'Temperature after velocity_scaling_2: {self.dynamic.temperature()};')
-        return pressure, total_energy
-
-    def load_forces(
-            self,
-            potential_table: np.ndarray,
-    ):
-        debug_info(f"Entering 'load_forces(potential_table)'")
-        potential_energies = get_empty_float_scalars(self.static.particles_number)
-        self.dynamic.accelerations = get_empty_vectors(self.static.particles_number)
-        if self.potential.update_test:
-            debug_info(f'update_test = True')
-            self.update_list()
-            self.dynamic.displacements = get_empty_vectors(self.static.particles_number)
-            self.potential.update_test = False
-
-        virial = lf_cycle(
-            particles_number=self.static.particles_number,
-            verlet_list=self.verlet_lists['list'],
-            marker_1=self.verlet_lists['marker_1'],
-            marker_2=self.verlet_lists['marker_2'],
-            r_cut=self.potential.r_cut,
-            potential_table=potential_table,
-            potential_energies=potential_energies,
-            positions=self.dynamic.positions,
-            accelerations=self.dynamic.accelerations,
-            cell_dimensions=self.static.cell_dimensions,
-        )
-        acc_mag = (self.dynamic.accelerations ** 2).sum(axis=1) ** 0.2
-        debug_info(f'Mean and max acceleration: {acc_mag.mean()}, {acc_mag.max()}')
-        potential_energy = potential_energies.sum()
-        self.dynamic.displacements += (
-                self.dynamic.velocities * self.model.time_step
-                + self.dynamic.accelerations * self.model.time_step * self.model.time_step / 2.0
-        )
-        self.load_move_test()
-        debug_info(f'Potential energy: {potential_energy};')
-        debug_info(f"Exiting 'load_forces(potential_table)'")
-        return potential_energy, virial
-
-    # @staticmethod
-    # @numba.jit(nopython=True)
-    # def lf_cycle(
-    #         particles_number,
-    #         verlet_list,
-    #         marker_1,
-    #         marker_2,
-    #         r_cut,
-    #         potential_table,
-    #         potential_energies,
-    #         positions,
-    #         accelerations,
-    #         cell_dimensions,
-    # ):
-    #     virial = 0
-    #     for i in range(particles_number - 1):
-    #         # for j in range(i + 1, particles_number):
-    #         for k in range(
-    #                 marker_1[i],
-    #                 marker_2[i] + 1,
-    #         ):
-    #             j = verlet_list[k]
-    #             radius_vector = get_radius_vector(
-    #                 index_1=i,
-    #                 index_2=j,
-    #                 positions=positions,
-    #                 cell_dimensions=cell_dimensions
-    #             )
-    #             distance_squared = (radius_vector ** 2).sum()
-    #             if distance_squared < r_cut * r_cut:
-    #                 # TODO обеспечить защиту от перекрытий
-    #                 # При расстояниях меньших 0.5 получаем отрицательный индекс
-    #                 # А значит неправильные потенциал и ускорение.
-    #                 table_row = int((distance_squared ** 0.5 - 0.5) / 0.0001)
-    #                 # table_row = int((distance_squared ** 0.5) / 0.0001)
-    #                 potential_ij = potential_table[table_row - 1, 0]
-    #                 force_ij = potential_table[table_row - 1, 1]  # / (distance_squared ** 0.5)
-    #                 potential_energies[i] += potential_ij / 2.0
-    #                 potential_energies[j] += potential_ij / 2.0
-    #                 virial += force_ij * distance_squared
-    #                 acceleration_ij = force_ij * radius_vector
-    #                 accelerations[i] += acceleration_ij
-    #                 accelerations[j] -= acceleration_ij
-    #                 assert table_row >= 1
-    #     return virial
-
-    @logger_wraps()
-    def update_list(self):
-        self.verlet_lists = {
-            'marker_1': get_empty_int_scalars(self.static.particles_number),
-            'marker_2': get_empty_int_scalars(self.static.particles_number),
-            'list': get_empty_int_scalars(100 * self.static.particles_number),
-        }
-        advances = get_empty_int_scalars(self.static.particles_number)
-        update_list_cycle(
-            rng=self.potential.r_cut + self.potential.skin,
-            advances=advances,
-            particles_number=self.static.particles_number,
-            positions=self.dynamic.positions,
-            cell_dimensions=self.static.cell_dimensions,
-            marker_1=self.verlet_lists['marker_1'],
-            marker_2=self.verlet_lists['marker_2'],
-            verlet_list=self.verlet_lists['list'],
-        )
-
-    # @staticmethod
-    # @numba.jit(nopython=True)
-    # def _update_list(
-    #         rng: float,
-    #         advances: np.ndarray,
-    #         particles_number: int,
-    #         positions: np.ndarray,
-    #         cell_dimensions: np.ndarray,
-    #         marker_1: np.ndarray,
-    #         marker_2: np.ndarray,
-    #         verlet_list: np.ndarray,
-    # ):
-    #     k = 1
-    #     for i in range(particles_number - 1):
-    #         for j in range(i + 1, particles_number):
-    #             radius_vector = get_radius_vector(
-    #                 index_1=i,
-    #                 index_2=j,
-    #                 positions=positions,
-    #                 cell_dimensions=cell_dimensions
-    #             )
-    #             distance_squared = (radius_vector ** 2).sum()
-    #             if distance_squared < rng * rng:
-    #                 advances[j] = 1
-    #             else:
-    #                 advances[j] = 0
-    #
-    #         marker_1[i] = k
-    #         for j in range(i + 1, particles_number):
-    #             verlet_list[k] = j
-    #             k = k + advances[j]
-    #         marker_2[i] = k - 1
-
-    @logger_wraps()
-    def load_move_test(self):
-        ds_1, ds_2 = 0.0, 0.0
-        for i in range(self.static.particles_number):
-            ds = (self.dynamic.displacements[i] ** 2).sum() ** 0.5
-            if ds >= ds_1:
-                ds_2 = ds_1
-                ds_1 = ds
-            elif ds >= ds_2:
-                ds_2 = ds
-        self.potential.update_test = (ds_1 + ds_2) > self.potential.skin
-
-    def save_config(self, file_name: str = None):
-        file_name = join(DATA_DIR, file_name or 'system_config_149.txt')
-        with open(file_name, mode='w', encoding='utf-8') as file:
-            lines = [
-                '\n'.join(self.static.cell_dimensions.astype(str)),
-                str(self.static.particles_number),
-                str(self.model.time),
-                *[
-                    f'{pos[0]} {pos[1]} {pos[2]}'
-                    for i, pos in enumerate(self.dynamic.positions)
-                ],
-                *[
-                    f'{vel[0]} {vel[1]} {vel[2]}'
-                    for i, vel in enumerate(self.dynamic.velocities)
-                ],
-                *[
-                    f'{acc[0]} {acc[1]} {acc[2]}'
-                    for i, acc in enumerate(self.dynamic.accelerations)
-                ],
-            ]
-            file.write('\n'.join(lines))
-
-    @logger_wraps()
-    def load_save_config(self, file_name: str = None):
-        file_name = join(DATA_DIR, file_name or 'system_config_149.txt')
-        with open(file_name, mode='r', encoding='utf-8') as file:
-            lines = file.readlines()
-            lines = [line.rstrip() for line in lines]
-            self.static.cell_dimensions = np.array(lines[:3], dtype=np.float)
-            self.static.particles_number = int(lines[3])
-            self.model.time = float(lines[4])
-            self.dynamic.positions = get_empty_vectors(self.static.particles_number)
-            self.dynamic.velocities = get_empty_vectors(self.static.particles_number)
-            self.dynamic.accelerations = get_empty_vectors(self.static.particles_number)
-            for i in range(self.static.particles_number):
-                self.dynamic.positions[i] = np.array(
-                    lines[5 + i].split(),
-                    dtype=np.float,
-                )
-                self.dynamic.velocities[i] = np.array(
-                    lines[5 + i + self.static.particles_number].split(),
-                    dtype=np.float,
-                )
-                self.dynamic.velocities[i] = np.array(
-                    lines[5 + i + 2 * self.static.particles_number].split(),
-                    dtype=np.float,
-                )
-
-    @staticmethod
-    def save_system_parameters(
-            system_parameters: dict,
-            step: int,
-            potential_energy: float,
-            temperature: float,
-            pressure: float,
-            system_kinetic_energy: float,
-    ):
-        system_parameters['temperature'][step - 1] = temperature
-        system_parameters['pressure'][step - 1] = pressure
-        system_parameters['kinetic_energy'][step - 1] = system_kinetic_energy
-        system_parameters['potential_energy'][step - 1] = potential_energy
-        system_parameters['total_energy'][step - 1] = system_kinetic_energy + potential_energy
-
-    def load_lammps_trajectory(self):
-        lines = [
-            'ITEM: TIMESTEP',
-            str(self.model.time),
-            'ITEM: NUMBER OF ATOMS',
-            str(self.static.particles_number),
-            'ITEM: BOX BOUNDS pp pp pp',
-            *(
-                f'{-dim / 2} {dim / 2}'
-                for dim in self.static.cell_dimensions
-            ),
-            'ITEM: ATOMS id type x y z',
-            *(
-                f'{i + 1} 0 {pos[0]} {pos[1]} {pos[2]}'
-                for i, pos in enumerate(self.dynamic.positions)
-            ),
-            '\n',
-        ]
-        return '\n'.join(lines)
 
     def md_time_step(
             self,
@@ -361,7 +65,7 @@ class MolecularDynamics:
             step: int,
             system_parameters: dict,
     ):
-        system_kinetic_energy, temperature = self.system_dynamics(
+        system_kinetic_energy, temperature = self.verlet.system_dynamics(
             stage_id=1,
             thermostat_type='velocity_scaling',
         )
@@ -372,7 +76,7 @@ class MolecularDynamics:
             logger.warning(f'Drift of system center!')
         debug_info(f'System center after boundary_conditions: {system_center_2}')
 
-        potential_energy, virial = self.load_forces(
+        potential_energy, virial = self.verlet.load_forces(
             potential_table=potential_table,
         )
         pressure = self.dynamic.get_pressure(
@@ -385,12 +89,17 @@ class MolecularDynamics:
             'pressure': pressure,
         }
 
-        self.system_dynamics(
+        self.verlet.system_dynamics(
             stage_id=2,
             thermostat_type='velocity_scaling',
             **parameters,
         )
-        self.save_system_parameters(
+        saver = Saver(
+            static=self.static,
+            dynamic=self.dynamic,
+            model=self.model,
+        )
+        saver.save_system_parameters(
             system_parameters=system_parameters,
             step=step,
             temperature=temperature,
@@ -398,7 +107,7 @@ class MolecularDynamics:
         )
         if step % 20 == 0:
             lammps_trajectories.append(
-                self.load_lammps_trajectory()
+                saver.load_lammps_trajectory()
             )
         print(
             f'Step: {step}/{self.model.iterations_numbers};',
@@ -411,7 +120,7 @@ class MolecularDynamics:
         if step % 1000 == 0:
             _start = datetime.now()
             with open(
-                    join(DATA_DIR, 'system_config.txt'),
+                    join(PATH_TO_DATA, 'system_config.txt'),
                     mode='a',
                     encoding='utf-8'
             ) as file:
@@ -448,7 +157,7 @@ class MolecularDynamics:
 
         _start = datetime.now()
         with open(
-                join(DATA_DIR, 'system_config.txt'),
+                join(PATH_TO_DATA, 'system_config.txt'),
                 mode='a',
                 encoding='utf-8'
         ) as file:
@@ -460,7 +169,7 @@ class MolecularDynamics:
 
         start = datetime.now()
         DataFrame(system_parameters).to_csv(
-            join(DATA_DIR, 'system_parameters.csv'),
+            join(PATH_TO_DATA, 'system_parameters.csv'),
             sep=';',
             index=False,
         )
@@ -468,7 +177,7 @@ class MolecularDynamics:
         print(f'System parameters are saved. Time of saving: {datetime.now() - start}')
 
     def run_rdf(self, steps_number: int = 1000, file_name: str = None):
-        file_name = join(DATA_DIR, file_name or 'system_config_149.txt')
+        file_name = join(PATH_TO_DATA, file_name or 'system_config_149.txt')
         layer_thickness = 0.01
         begin_step = 1
         end_step = steps_number
