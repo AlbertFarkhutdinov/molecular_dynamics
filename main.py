@@ -14,13 +14,14 @@ pressure = epsilon / (sigma ^ 3) = 4.2E7 pascal = 4.2E2 atmospheres
 
 
 from cProfile import run
+from json import load
 from math import pi
 from datetime import datetime
+from os import getcwd
 from os.path import join
 
 import matplotlib.pyplot as plt
 import numpy as np
-import numba
 from pandas import DataFrame
 
 from constants import DATA_DIR, IS_LOGGED
@@ -29,6 +30,7 @@ from external_parameters import ExternalParameters
 from helpers import get_empty_float_scalars, get_empty_int_scalars, get_empty_vectors, sign
 from log_config import debug_info, logger, logger_wraps
 from modeling_parameters import ModelingParameters
+from numba_procedures import lf_cycle, update_list_cycle
 from potential_parameters import PotentialParameters
 from static_parameters import SystemStaticParameters
 
@@ -135,7 +137,7 @@ class MolecularDynamics:
             self.dynamic.displacements = get_empty_vectors(self.static.particles_number)
             self.potential.update_test = False
 
-        virial = self.lf_cycle(
+        virial = lf_cycle(
             particles_number=self.static.particles_number,
             verlet_list=self.verlet_lists['list'],
             marker_1=self.verlet_lists['marker_1'],
@@ -159,59 +161,51 @@ class MolecularDynamics:
         debug_info(f"Exiting 'load_forces(potential_table)'")
         return potential_energy, virial
 
-    @staticmethod
-    @numba.jit(nopython=True)
-    def lf_cycle(
-            particles_number,
-            verlet_list,
-            marker_1,
-            marker_2,
-            r_cut,
-            potential_table,
-            potential_energies,
-            positions,
-            accelerations,
-            cell_dimensions,
-    ):
-        virial = 0
-        for i in range(particles_number - 1):
-            # for j in range(i + 1, particles_number):
-            for k in range(
-                    marker_1[i],
-                    marker_2[i] + 1,
-            ):
-                j = verlet_list[k]
-                radius_vector = positions[i] - positions[j]
-                if radius_vector[0] > cell_dimensions[0] / 2:
-                    radius_vector[0] -= cell_dimensions[0]
-                elif radius_vector[0] < -cell_dimensions[0] / 2:
-                    radius_vector[0] += cell_dimensions[0]
-                if radius_vector[1] > cell_dimensions[1] / 2:
-                    radius_vector[1] -= cell_dimensions[1]
-                elif radius_vector[1] < -cell_dimensions[1] / 2:
-                    radius_vector[1] += cell_dimensions[1]
-                if radius_vector[2] > cell_dimensions[2] / 2:
-                    radius_vector[2] -= cell_dimensions[2]
-                elif radius_vector[2] < -cell_dimensions[2] / 2:
-                    radius_vector[2] += cell_dimensions[2]
-                # radius_vector -= (2 * radius_vector / cell_dimensions).astype(numba.int32) * cell_dimensions
-                distance_squared = (radius_vector ** 2).sum()
-                if distance_squared < r_cut * r_cut:
-                    # TODO обеспечить защиту от перекрытий
-                    # При расстояниях меньших 0.5 получаем отрицательный индекс
-                    # А значит неправильные потенциал и ускорение.
-                    table_row = int((distance_squared ** 0.5 - 0.5) / 0.0001)
-                    # table_row = int((distance_squared ** 0.5) / 0.0001)
-                    potential_ij = potential_table[table_row - 1, 0]
-                    force_ij = potential_table[table_row - 1, 1]  # / (distance_squared ** 0.5)
-                    potential_energies[i] += potential_ij / 2.0
-                    potential_energies[j] += potential_ij / 2.0
-                    virial += force_ij * distance_squared
-                    acceleration_ij = force_ij * radius_vector
-                    accelerations[i] += acceleration_ij
-                    accelerations[j] -= acceleration_ij
-                    assert table_row >= 1
-        return virial
+    # @staticmethod
+    # @numba.jit(nopython=True)
+    # def lf_cycle(
+    #         particles_number,
+    #         verlet_list,
+    #         marker_1,
+    #         marker_2,
+    #         r_cut,
+    #         potential_table,
+    #         potential_energies,
+    #         positions,
+    #         accelerations,
+    #         cell_dimensions,
+    # ):
+    #     virial = 0
+    #     for i in range(particles_number - 1):
+    #         # for j in range(i + 1, particles_number):
+    #         for k in range(
+    #                 marker_1[i],
+    #                 marker_2[i] + 1,
+    #         ):
+    #             j = verlet_list[k]
+    #             radius_vector = get_radius_vector(
+    #                 index_1=i,
+    #                 index_2=j,
+    #                 positions=positions,
+    #                 cell_dimensions=cell_dimensions
+    #             )
+    #             distance_squared = (radius_vector ** 2).sum()
+    #             if distance_squared < r_cut * r_cut:
+    #                 # TODO обеспечить защиту от перекрытий
+    #                 # При расстояниях меньших 0.5 получаем отрицательный индекс
+    #                 # А значит неправильные потенциал и ускорение.
+    #                 table_row = int((distance_squared ** 0.5 - 0.5) / 0.0001)
+    #                 # table_row = int((distance_squared ** 0.5) / 0.0001)
+    #                 potential_ij = potential_table[table_row - 1, 0]
+    #                 force_ij = potential_table[table_row - 1, 1]  # / (distance_squared ** 0.5)
+    #                 potential_energies[i] += potential_ij / 2.0
+    #                 potential_energies[j] += potential_ij / 2.0
+    #                 virial += force_ij * distance_squared
+    #                 acceleration_ij = force_ij * radius_vector
+    #                 accelerations[i] += acceleration_ij
+    #                 accelerations[j] -= acceleration_ij
+    #                 assert table_row >= 1
+    #     return virial
 
     @logger_wraps()
     def update_list(self):
@@ -221,7 +215,7 @@ class MolecularDynamics:
             'list': get_empty_int_scalars(100 * self.static.particles_number),
         }
         advances = get_empty_int_scalars(self.static.particles_number)
-        self._update_list(
+        update_list_cycle(
             rng=self.potential.r_cut + self.potential.skin,
             advances=advances,
             particles_number=self.static.particles_number,
@@ -232,46 +226,38 @@ class MolecularDynamics:
             verlet_list=self.verlet_lists['list'],
         )
 
-    @staticmethod
-    @numba.jit(nopython=True)
-    def _update_list(
-            rng: float,
-            advances: np.ndarray,
-            particles_number: int,
-            positions: np.ndarray,
-            cell_dimensions: np.ndarray,
-            marker_1: np.ndarray,
-            marker_2: np.ndarray,
-            verlet_list: np.ndarray,
-    ):
-        k = 1
-        for i in range(particles_number - 1):
-            for j in range(i + 1, particles_number):
-                radius_vector = positions[i] - positions[j]
-                if radius_vector[0] > cell_dimensions[0] / 2:
-                    radius_vector[0] -= cell_dimensions[0]
-                elif radius_vector[0] < -cell_dimensions[0] / 2:
-                    radius_vector[0] += cell_dimensions[0]
-                if radius_vector[1] > cell_dimensions[1] / 2:
-                    radius_vector[1] -= cell_dimensions[1]
-                elif radius_vector[1] < -cell_dimensions[1] / 2:
-                    radius_vector[1] += cell_dimensions[1]
-                if radius_vector[2] > cell_dimensions[2] / 2:
-                    radius_vector[2] -= cell_dimensions[2]
-                elif radius_vector[2] < -cell_dimensions[2] / 2:
-                    radius_vector[2] += cell_dimensions[2]
-                # radius_vector -= (2 * radius_vector / cell_dimensions).astype(numba.int32) * cell_dimensions
-                distance_squared = (radius_vector ** 2).sum()
-                if distance_squared < rng * rng:
-                    advances[j] = 1
-                else:
-                    advances[j] = 0
-
-            marker_1[i] = k
-            for j in range(i + 1, particles_number):
-                verlet_list[k] = j
-                k = k + advances[j]
-            marker_2[i] = k - 1
+    # @staticmethod
+    # @numba.jit(nopython=True)
+    # def _update_list(
+    #         rng: float,
+    #         advances: np.ndarray,
+    #         particles_number: int,
+    #         positions: np.ndarray,
+    #         cell_dimensions: np.ndarray,
+    #         marker_1: np.ndarray,
+    #         marker_2: np.ndarray,
+    #         verlet_list: np.ndarray,
+    # ):
+    #     k = 1
+    #     for i in range(particles_number - 1):
+    #         for j in range(i + 1, particles_number):
+    #             radius_vector = get_radius_vector(
+    #                 index_1=i,
+    #                 index_2=j,
+    #                 positions=positions,
+    #                 cell_dimensions=cell_dimensions
+    #             )
+    #             distance_squared = (radius_vector ** 2).sum()
+    #             if distance_squared < rng * rng:
+    #                 advances[j] = 1
+    #             else:
+    #                 advances[j] = 0
+    #
+    #         marker_1[i] = k
+    #         for j in range(i + 1, particles_number):
+    #             verlet_list[k] = j
+    #             k = k + advances[j]
+    #         marker_2[i] = k - 1
 
     @logger_wraps()
     def load_move_test(self):
@@ -285,7 +271,6 @@ class MolecularDynamics:
                 ds_2 = ds
         self.potential.update_test = (ds_1 + ds_2) > self.potential.skin
 
-    # @logger_wraps()
     def save_config(self, file_name: str = None):
         file_name = join(DATA_DIR, file_name or 'system_config_149.txt')
         with open(file_name, mode='w', encoding='utf-8') as file:
@@ -307,7 +292,6 @@ class MolecularDynamics:
                 ],
             ]
             file.write('\n'.join(lines))
-        # return '\n'.join(lines)
 
     @logger_wraps()
     def load_save_config(self, file_name: str = None):
@@ -383,13 +367,10 @@ class MolecularDynamics:
         )
         system_center_1 = self.dynamic.system_center
         debug_info(f'System center after system_dynamics_1: {system_center_1}')
-        # print(f'System center after system_dynamics_1: {system_center_1}')
-        # self.dynamic.boundary_conditions()
         system_center_2 = self.dynamic.system_center
         if IS_LOGGED and any(system_center_2 > 1e-10):
             logger.warning(f'Drift of system center!')
         debug_info(f'System center after boundary_conditions: {system_center_2}')
-        # print(f'System center after boundary_conditions: {system_center_2}')
 
         potential_energy, virial = self.load_forces(
             potential_table=potential_table,
@@ -539,46 +520,36 @@ class MolecularDynamics:
         plt.savefig(file_name)
 
 
-if __name__ == '__main__':
-    np.set_printoptions(threshold=5000)
+def main(config_filename: str = None):
+    _config_filename = join(
+        getcwd(),
+        config_filename or 'config.json'
+    )
+    with open(_config_filename, encoding='utf8') as file:
+        config_parameters = load(file)
 
-    static_1 = SystemStaticParameters(
-        init_type=1,
-        lattice_constant=1.75,
-        particles_number=(7, 7, 7),
-        crystal_type='гцк',
+    static = SystemStaticParameters(**config_parameters['static_parameters'])
+    external = ExternalParameters(**config_parameters['external_parameters'])
+    model = ModelingParameters(**config_parameters['modeling_parameters'])
+    dynamic = SystemDynamicParameters(
+        static=static,
+        # temperature=model.initial_temperature,
     )
-    external_1 = ExternalParameters(
-        environment_type='velocity_scaling',
-        heating_velocity=0.02,
-        temperature=2.8,
-    )
-    INITIAL_TIME_STEP = 0.005
-    INITIAL_ITERATION_NUMBERS = 40000
-    model_1 = ModelingParameters(
-        iterations_numbers=INITIAL_ITERATION_NUMBERS,
-        time_step=INITIAL_TIME_STEP,
-        initial_temperature=1e-5,
-        # initial_temperature=2.8,
-    )
-    dynamic_1 = SystemDynamicParameters(
-        static=static_1,
-        # temperature=model_1.initial_temperature,
-    )
-    potential_1 = PotentialParameters(
-        potential_type='lennard_jones',
-        skin=0.3,
-    )
-    md_sample_1 = MolecularDynamics(
-        static=static_1,
-        dynamic=dynamic_1,
-        external=external_1,
-        model=model_1,
-        potential=potential_1,
+    potential = PotentialParameters(**config_parameters['potential_parameters'])
+    md_sample = MolecularDynamics(
+        static=static,
+        dynamic=dynamic,
+        external=external,
+        model=model,
+        potential=potential,
     )
     # run(
-    #     'md_sample_1.run_md()',
+    #     'md_sample.run_md()',
     #     sort=2,
     # )
-    md_sample_1.run_md()
-    # run('md_sample_1.run_rdf(50)', sort=2)
+    md_sample.run_md()
+
+
+if __name__ == '__main__':
+    np.set_printoptions(threshold=5000)
+    main()
