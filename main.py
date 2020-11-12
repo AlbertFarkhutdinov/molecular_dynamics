@@ -520,7 +520,11 @@ class MolecularDynamics:
         plt.savefig(file_name)
 
 
-def main(config_filename: str = None):
+def main(
+        config_filename: str = None,
+        is_profiled: bool = False,
+        is_initially_frozen: bool = True,
+):
     _config_filename = join(
         getcwd(),
         config_filename or 'config.json'
@@ -531,9 +535,11 @@ def main(config_filename: str = None):
     static = SystemStaticParameters(**config_parameters['static_parameters'])
     external = ExternalParameters(**config_parameters['external_parameters'])
     model = ModelingParameters(**config_parameters['modeling_parameters'])
+    initial_temperature = model.initial_temperature if not is_initially_frozen else None
+
     dynamic = SystemDynamicParameters(
         static=static,
-        # temperature=model.initial_temperature,
+        temperature=initial_temperature,
     )
     potential = PotentialParameters(**config_parameters['potential_parameters'])
     md_sample = MolecularDynamics(
@@ -543,11 +549,13 @@ def main(config_filename: str = None):
         model=model,
         potential=potential,
     )
-    # run(
-    #     'md_sample.run_md()',
-    #     sort=2,
-    # )
-    md_sample.run_md()
+    if is_profiled:
+        run(
+            'md_sample.run_md()',
+            sort=2,
+        )
+    else:
+        md_sample.run_md()
 
 
 if __name__ == '__main__':
