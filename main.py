@@ -13,22 +13,24 @@ pressure = epsilon / (sigma ^ 3) = 4.2E7 pascal = 4.2E2 atmospheres
 """
 
 
+from copy import deepcopy
 from cProfile import run
 from json import load
 from math import pi
 from datetime import datetime
 from os import getcwd
 from os.path import join
+from time import time
 from typing import Optional
 
 import numpy as np
 
-from constants import PATH_TO_DATA
 from dynamic_parameters import SystemDynamicParameters
 from external_parameters import ExternalParameters
 from helpers import get_empty_float_scalars, get_empty_int_scalars
 from log_config import debug_info, logger_wraps
 from modeling_parameters import ModelingParameters
+from numba_procedures import get_interparticle_distances
 from potential_parameters import PotentialParameters
 from saver import Saver
 from static_parameters import SystemStaticParameters
@@ -74,7 +76,8 @@ class MolecularDynamics:
             self,
             potential_table: np.ndarray,
             step: int,
-            system_parameters: dict,
+            system_parameters: dict = None,
+            is_rdf_calculation: bool = False,
     ):
         system_kinetic_energy, temperature = self.verlet.system_dynamics(
             stage_id=1,
@@ -97,23 +100,17 @@ class MolecularDynamics:
             thermostat_type='velocity_scaling',
             **parameters,
         )
-        self.saver.dynamic = self.dynamic
-        self.saver.step = step
-        self.saver.model.time = self.model.time
-        self.saver.update_system_parameters(
-            system_parameters=system_parameters,
-            temperature=temperature,
-            **parameters
-        )
-        self.saver.store_configuration()
-        print(
-            f'Step: {step}/{self.model.iterations_numbers};',
-            f'\tTime = {self.model.time:.3f};',
-            f'\tT = {temperature:.5f};',
-            f'\tP = {pressure:.5f};\n',
-            sep='\n',
-        )
-        self.saver.save_configurations()
+        if not is_rdf_calculation and system_parameters is not None:
+            self.saver.dynamic = self.dynamic
+            self.saver.step = step
+            self.saver.model.time = self.model.time
+            self.saver.update_system_parameters(
+                system_parameters=system_parameters,
+                temperature=temperature,
+                **parameters
+            )
+            self.saver.store_configuration()
+            self.saver.save_configurations()
 
     @logger_wraps()
     def run_md(self):
@@ -126,12 +123,21 @@ class MolecularDynamics:
             'total_energy': get_empty_float_scalars(self.model.iterations_numbers),
         }
         for step in range(1, self.model.iterations_numbers + 1):
+            if step % 1000:
+                self.run_rdf()
             self.model.time += self.model.time_step
             debug_info(f'Step: {step}; Time: {self.model.time:.3f};')
             self.md_time_step(
                 potential_table=self.potential.potential_table,
                 step=step,
                 system_parameters=system_parameters,
+            )
+            print(
+                f'Step: {step}/{self.model.iterations_numbers};',
+                f'\tTime = {self.model.time:.3f};',
+                f'\tT = {system_parameters["temperature"][step - 1]:.5f};',
+                f'\tP = {system_parameters["pressure"][step - 1]:.5f};\n',
+                sep='\n',
             )
             debug_info(f'End of step {step}.\n')
 
@@ -143,63 +149,116 @@ class MolecularDynamics:
             system_parameters=system_parameters,
         )
 
-    def run_rdf(self, steps_number: int = 1000, file_name: str = None):
-        file_name = join(PATH_TO_DATA, file_name or 'system_config.txt')
+    def run_rdf(
+            self,
+            steps_number: int = 1500,
+            is_positions_from_file: bool = False
+            # file_name: str = None,
+    ):
+        start = time()
+        print(f'RDF calculation for T = {self.dynamic.temperature()}')
         layer_thickness = 0.01
-        begin_step = 1
+        begin_step = 501
         end_step = steps_number
         rdf = get_empty_float_scalars(10 * self.static.particles_number)
-        with open(file_name, mode='r', encoding='utf8') as file:
-            lines = file.readlines()
-            for step in range(begin_step, end_step + 1):
-                for i in range(self.static.particles_number):
-                    self.dynamic.positions[i] = np.array(
-                        lines[9 + i].split()[2:],
-                        dtype=np.float,
-                    )
-                distances = self.dynamic.interparticle_distances
-                layer_numbers = (distances / layer_thickness).astype(np.int)
-                max_layer_number = layer_numbers.max()
-                particles_in_layer = get_empty_int_scalars(max_layer_number + 1)
-                layers, particles = np.unique(layer_numbers, return_counts=True)
-                for i, layer in enumerate(layers):
-                    particles_in_layer[layer] = particles[i]
-                radiuses = layer_thickness * (np.arange(max_layer_number + 1) + 0.5)
-                rdf[:max_layer_number + 1] += (
-                        2.0 * self.static.get_cell_volume()
-                        / (4.0 * pi * radiuses * radiuses
-                           * self.static.particles_number * self.static.particles_number)
-                        * particles_in_layer / layer_thickness
-                )
+
+        if not is_positions_from_file:
+            sample = deepcopy(self)
+            sample.verlet.external.temperature = self.dynamic.temperature()
+            if sample.verlet.external.temperature == 0:
+                sample.verlet.external.temperature = sample.model.initial_temperature
+            for step in range(1, end_step + 1):
                 print(f'Step: {step}/{end_step};')
-        with open('rdf_file.txt', mode='w', encoding='utf8') as file:
-            rdf = rdf[:np.nonzero(rdf)[0][-1]]
-            radiuses = layer_thickness * (np.arange(rdf.size) + 0.5)
-            rdf = rdf / (end_step - begin_step + 1)
-            for i, radius in enumerate(radiuses):
-                if radius <= self.static.cell_dimensions[0] / 2.0:
-                    file.write(f'{radius} {rdf[i]}\n')
-        print('Calculation completed.')
+                if step == begin_step:
+                    print(f'RDF Calculation started.')
+                if step >= begin_step:
+                    distances = get_interparticle_distances(
+                        distances=np.zeros(
+                            (sample.static.particles_number, sample.static.particles_number),
+                            dtype=np.float,
+                        ),
+                        positions=sample.dynamic.positions,
+                        cell_dimensions=sample.static.cell_dimensions,
+                    )
+                    layer_numbers = (distances / layer_thickness).astype(np.int)
+                    max_layer_number = layer_numbers.max()
+                    particles_in_layer = get_empty_int_scalars(max_layer_number + 1)
+                    layers, particles = np.unique(layer_numbers, return_counts=True)
+                    for i, layer in enumerate(layers):
+                        particles_in_layer[layer] = particles[i]
+                    radiuses = layer_thickness * (0.5 + np.arange(max_layer_number + 1))
+                    rdf[:max_layer_number + 1] += (
+                            2.0 * sample.static.get_cell_volume()
+                            / (4.0 * pi * radiuses * radiuses
+                               * sample.static.particles_number * sample.static.particles_number)
+                            * particles_in_layer / layer_thickness
+                    )
+                sample.md_time_step(
+                    potential_table=sample.potential.potential_table,
+                    step=step,
+                    is_rdf_calculation=True,
+                )
+        else:
+            pass
+            # positions = get_empty_vectors(self.static.particles_number)
+            # file_name = join(PATH_TO_DATA, file_name or 'system_config.txt')
+            # with open(file_name, mode='r', encoding='utf8') as file:
+            #     lines = file.readlines()
+            #     for i in range(self.static.particles_number):
+            #         positions[i] = np.array(
+            #             lines[9 + i].split()[2:],
+            #             dtype=np.float,
+            #         )
+
+        rdf = rdf[:np.nonzero(rdf)[0][-1]] / (end_step - begin_step + 1)
+        radiuses = layer_thickness * (0.5 + np.arange(rdf.size))
+        Saver().save_rdf(
+            rdf_data={
+                'radius': radiuses[radiuses <= self.static.cell_dimensions[0] / 2.0],
+                'rdf': rdf[radiuses <= self.static.cell_dimensions[0] / 2.0],
+            },
+            file_name=f'rdf_file_T_{self.dynamic.temperature():.3f}.csv'
+        )
+        print(f'Calculation completed. Time of calculation: {time() - start} seconds.')
 
 
 def main(
         config_filename: str = None,
         is_initially_frozen: bool = True,
-        is_profiled: bool = False,
 ):
-    md_sample = MolecularDynamics(
+    MolecularDynamics(
         config_filename=config_filename,
         is_initially_frozen=is_initially_frozen,
-    )
-    if is_profiled:
-        run(
-            'md_sample.run_md()',
-            sort=2,
-        )
-    else:
-        md_sample.run_md()
+    ).run_md()
 
 
 if __name__ == '__main__':
     np.set_printoptions(threshold=5000)
+    md_sample = MolecularDynamics(
+        config_filename=None,
+        is_initially_frozen=True,
+    )
+
+    # def f(x):
+    #     for i in range(x):
+    #         get_interparticle_distances(
+    #             distances=np.zeros(
+    #                 (md_sample.static.particles_number, md_sample.static.particles_number),
+    #                 dtype=np.float,
+    #             ),
+    #             positions=md_sample.dynamic.positions,
+    #             cell_dimensions=md_sample.static.cell_dimensions,
+    #         )
+    #
+    # f(1)
+    # run('f(5)')
+
+    # run(
+    #     'md_sample.run_rdf()',
+    #     sort=2,
+    # )
+    # run(
+    #     'md_sample.main()',
+    #     sort=2,
+    # )
     main()

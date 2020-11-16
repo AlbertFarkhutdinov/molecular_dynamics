@@ -15,12 +15,12 @@ class Saver:
 
     def __init__(
             self,
-            static: SystemStaticParameters,
-            dynamic: SystemDynamicParameters,
-            model: ModelingParameters,
-            configuration_storing_step: int,
-            configuration_saving_step: int,
+            configuration_storing_step: int = 20,
+            configuration_saving_step: int = 1000,
             step: int = 1,
+            static: SystemStaticParameters = None,
+            dynamic: SystemDynamicParameters = None,
+            model: ModelingParameters = None,
             lammps_configurations=None,
     ):
         self.step = step
@@ -92,20 +92,6 @@ class Saver:
         system_parameters['potential_energy'][self.step - 1] = potential_energy
         system_parameters['total_energy'][self.step - 1] = system_kinetic_energy + potential_energy
 
-    @staticmethod
-    def save_system_parameters(
-            system_parameters: dict,
-            file_name: str = None,
-    ):
-        _start = time()
-        file_name = join(PATH_TO_DATA, file_name or 'system_parameters.csv')
-        DataFrame(system_parameters).to_csv(
-            file_name,
-            sep=';',
-            index=False,
-        )
-        print(f'System parameters are saved. Time of saving: {time() - _start} seconds')
-
     def get_lammps_trajectory(self):
         lines = [
             'ITEM: TIMESTEP',
@@ -151,3 +137,43 @@ class Saver:
             f'Time of saving: {time() - _start} seconds'
         )
         self.lammps_configurations = []
+
+    @staticmethod
+    def save_dict(
+            data: dict,
+            default_file_name: str,
+            data_name: str,
+            file_name: str = None,
+    ):
+        _start = time()
+        _file_name = join(PATH_TO_DATA, file_name or default_file_name)
+        DataFrame(data).to_csv(
+            _file_name,
+            sep=';',
+            index=False,
+        )
+        print(f'{data_name} are saved. Time of saving: {time() - _start} seconds')
+
+    def save_system_parameters(
+            self,
+            system_parameters: dict,
+            file_name: str = None,
+    ):
+        self.save_dict(
+            data=system_parameters,
+            default_file_name='system_parameters.csv',
+            data_name='System parameters',
+            file_name=file_name,
+        )
+
+    def save_rdf(
+            self,
+            rdf_data,
+            file_name: str = None,
+    ):
+        self.save_dict(
+            data=rdf_data,
+            default_file_name='rdf_file.csv',
+            data_name='RDF values',
+            file_name=file_name,
+        )

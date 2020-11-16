@@ -92,3 +92,26 @@ def update_list_cycle(
             verlet_list[k] = j
             k = k + advances[j]
         marker_2[i] = k - 1
+
+
+@numba.jit(nopython=True)
+def get_interparticle_distances(positions, distances, cell_dimensions):
+    for i in range(len(distances[0]) - 1):
+        for j in range(i + 1, len(distances[0])):
+            radius_vector = positions[i] - positions[j]
+            if radius_vector[0] > cell_dimensions[0] / 2:
+                radius_vector[0] -= cell_dimensions[0]
+            elif radius_vector[0] < -cell_dimensions[0] / 2:
+                radius_vector[0] += cell_dimensions[0]
+            if radius_vector[1] > cell_dimensions[1] / 2:
+                radius_vector[1] -= cell_dimensions[1]
+            elif radius_vector[1] < -cell_dimensions[1] / 2:
+                radius_vector[1] += cell_dimensions[1]
+            if radius_vector[2] > cell_dimensions[2] / 2:
+                radius_vector[2] -= cell_dimensions[2]
+            elif radius_vector[2] < -cell_dimensions[2] / 2:
+                radius_vector[2] += cell_dimensions[2]
+            distances[i, j] = np.sqrt((radius_vector * radius_vector).sum())
+    return distances
+
+
