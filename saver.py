@@ -1,11 +1,13 @@
+from time import time
 from os.path import join
 
 import numpy as np
+from pandas import DataFrame
 
 from constants import PATH_TO_DATA
 from dynamic_parameters import SystemDynamicParameters
-from helpers import get_empty_vectors
 from modeling_parameters import ModelingParameters
+from helpers import get_empty_vectors
 from static_parameters import SystemStaticParameters
 
 
@@ -16,12 +18,20 @@ class Saver:
             static: SystemStaticParameters,
             dynamic: SystemDynamicParameters,
             model: ModelingParameters,
+            configuration_storing_step: int,
+            configuration_saving_step: int,
+            step: int = 1,
+            lammps_configurations=None,
     ):
+        self.step = step
         self.static = static
         self.dynamic = dynamic
         self.model = model
+        self.lammps_configurations = lammps_configurations or []
+        self.configuration_storing_step = configuration_storing_step
+        self.configuration_saving_step = configuration_saving_step
 
-    def save_config(self, file_name: str = None):
+    def save_configuration(self, file_name: str = None):
         file_name = join(PATH_TO_DATA, file_name or 'system_config_149.txt')
         with open(file_name, mode='w', encoding='utf-8') as file:
             lines = [
@@ -43,7 +53,7 @@ class Saver:
             ]
             file.write('\n'.join(lines))
 
-    def load_save_config(self, file_name: str = None):
+    def load_saved_configuration(self, file_name: str = None):
         file_name = join(PATH_TO_DATA, file_name or 'system_config.txt')
         with open(file_name, mode='r', encoding='utf-8') as file:
             lines = file.readlines()
@@ -68,22 +78,35 @@ class Saver:
                     dtype=np.float,
                 )
 
-    @staticmethod
-    def save_system_parameters(
+    def update_system_parameters(
+            self,
             system_parameters: dict,
-            step: int,
             potential_energy: float,
             temperature: float,
             pressure: float,
             system_kinetic_energy: float,
     ):
-        system_parameters['temperature'][step - 1] = temperature
-        system_parameters['pressure'][step - 1] = pressure
-        system_parameters['kinetic_energy'][step - 1] = system_kinetic_energy
-        system_parameters['potential_energy'][step - 1] = potential_energy
-        system_parameters['total_energy'][step - 1] = system_kinetic_energy + potential_energy
+        system_parameters['temperature'][self.step - 1] = temperature
+        system_parameters['pressure'][self.step - 1] = pressure
+        system_parameters['kinetic_energy'][self.step - 1] = system_kinetic_energy
+        system_parameters['potential_energy'][self.step - 1] = potential_energy
+        system_parameters['total_energy'][self.step - 1] = system_kinetic_energy + potential_energy
 
-    def load_lammps_trajectory(self):
+    @staticmethod
+    def save_system_parameters(
+            system_parameters: dict,
+            file_name: str = None,
+    ):
+        _start = time()
+        file_name = join(PATH_TO_DATA, file_name or 'system_parameters.csv')
+        DataFrame(system_parameters).to_csv(
+            file_name,
+            sep=';',
+            index=False,
+        )
+        print(f'System parameters are saved. Time of saving: {time() - _start} seconds')
+
+    def get_lammps_trajectory(self):
         lines = [
             'ITEM: TIMESTEP',
             str(self.model.time),
@@ -102,3 +125,29 @@ class Saver:
             '\n',
         ]
         return '\n'.join(lines)
+
+    def store_configuration(self):
+        if self.step % self.configuration_storing_step == 0:
+            self.lammps_configurations.append(
+                self.get_lammps_trajectory()
+            )
+
+    def save_configurations(
+            self,
+            file_name: str = None,
+            is_last_step: bool = False
+    ):
+        file_name = join(PATH_TO_DATA, file_name or 'system_config.txt')
+        _start = time()
+        with open(file_name, mode='a', encoding='utf-8') as file:
+            file.write('\n'.join(self.lammps_configurations))
+
+        if not is_last_step and self.step % self.configuration_saving_step == 0:
+            _saving_step = self.configuration_saving_step
+        else:
+            _saving_step = self.model.iterations_numbers % self.configuration_saving_step
+        print(
+            f'LAMMPS trajectories for last {_saving_step} steps are saved. '
+            f'Time of saving: {time() - _start} seconds'
+        )
+        self.lammps_configurations = []

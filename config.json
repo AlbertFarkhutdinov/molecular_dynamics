@@ -18,5 +18,9 @@
   "potential_parameters": {
     "potential_type": "lennard_jones",
     "skin": 0.3
+  },
+  "saver_parameters": {
+    "configuration_storing_step": 20,
+    "configuration_saving_step": 1000
   }
 }

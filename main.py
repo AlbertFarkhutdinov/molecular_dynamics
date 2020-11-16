@@ -19,16 +19,15 @@ from math import pi
 from datetime import datetime
 from os import getcwd
 from os.path import join
+from typing import Optional
 
-import matplotlib.pyplot as plt
 import numpy as np
-from pandas import DataFrame
 
-from constants import PATH_TO_DATA, IS_LOGGED
+from constants import PATH_TO_DATA
 from dynamic_parameters import SystemDynamicParameters
 from external_parameters import ExternalParameters
 from helpers import get_empty_float_scalars, get_empty_int_scalars
-from log_config import debug_info, logger, logger_wraps
+from log_config import debug_info, logger_wraps
 from modeling_parameters import ModelingParameters
 from potential_parameters import PotentialParameters
 from saver import Saver
@@ -40,27 +39,39 @@ class MolecularDynamics:
 
     def __init__(
             self,
-            static: SystemStaticParameters,
-            dynamic: SystemDynamicParameters,
-            external: ExternalParameters,
-            model: ModelingParameters,
-            potential: PotentialParameters,
+            config_filename: Optional[str] = None,
+            is_initially_frozen: bool = True,
     ):
-        self.potential = potential
-        self.static = static
-        self.dynamic = dynamic
-        self.model = model
+        _config_filename = join(
+            getcwd(),
+            config_filename or 'config.json'
+        )
+        with open(_config_filename, encoding='utf8') as file:
+            config_parameters = load(file)
+
+        self.static = SystemStaticParameters(**config_parameters['static_parameters'])
+        self.model = ModelingParameters(**config_parameters['modeling_parameters'])
+        self.dynamic = SystemDynamicParameters(
+            static=self.static,
+            temperature=self.model.initial_temperature if not is_initially_frozen else None,
+        )
+        self.potential = PotentialParameters(**config_parameters['potential_parameters'])
         self.verlet = Verlet(
             static=self.static,
             dynamic=self.dynamic,
-            external=external,
+            external=ExternalParameters(**config_parameters['external_parameters']),
             model=self.model,
             potential=self.potential,
+        )
+        self.saver = Saver(
+            static=self.static,
+            dynamic=self.dynamic,
+            model=self.model,
+            **config_parameters['saver_parameters'],
         )
 
     def md_time_step(
             self,
-            lammps_trajectories: list,
             potential_table: np.ndarray,
             step: int,
             system_parameters: dict,
@@ -69,13 +80,6 @@ class MolecularDynamics:
             stage_id=1,
             thermostat_type='velocity_scaling',
         )
-        system_center_1 = self.dynamic.system_center
-        debug_info(f'System center after system_dynamics_1: {system_center_1}')
-        system_center_2 = self.dynamic.system_center
-        if IS_LOGGED and any(system_center_2 > 1e-10):
-            logger.warning(f'Drift of system center!')
-        debug_info(f'System center after boundary_conditions: {system_center_2}')
-
         potential_energy, virial = self.verlet.load_forces(
             potential_table=potential_table,
         )
@@ -88,27 +92,20 @@ class MolecularDynamics:
             'potential_energy': potential_energy,
             'pressure': pressure,
         }
-
         self.verlet.system_dynamics(
             stage_id=2,
             thermostat_type='velocity_scaling',
             **parameters,
         )
-        saver = Saver(
-            static=self.static,
-            dynamic=self.dynamic,
-            model=self.model,
-        )
-        saver.save_system_parameters(
+        self.saver.dynamic = self.dynamic
+        self.saver.step = step
+        self.saver.model.time = self.model.time
+        self.saver.update_system_parameters(
             system_parameters=system_parameters,
-            step=step,
             temperature=temperature,
             **parameters
         )
-        if step % 20 == 0:
-            lammps_trajectories.append(
-                saver.load_lammps_trajectory()
-            )
+        self.saver.store_configuration()
         print(
             f'Step: {step}/{self.model.iterations_numbers};',
             f'\tTime = {self.model.time:.3f};',
@@ -116,26 +113,11 @@ class MolecularDynamics:
             f'\tP = {pressure:.5f};\n',
             sep='\n',
         )
-        debug_info(f'End of step {step}.\n')
-        if step % 1000 == 0:
-            _start = datetime.now()
-            with open(
-                    join(PATH_TO_DATA, 'system_config.txt'),
-                    mode='a',
-                    encoding='utf-8'
-            ) as file:
-                file.write('\n'.join(lammps_trajectories))
-            print(
-                f'LAMMPS trajectories for last 1000 steps are saved. '
-                f'Time of saving: {datetime.now() - _start}'
-            )
-            lammps_trajectories = []
+        self.saver.save_configurations()
 
     @logger_wraps()
     def run_md(self):
         start = datetime.now()
-        potential_table = self.potential.potential_table
-        lammps_trajectories = []
         system_parameters = {
             'temperature': get_empty_float_scalars(self.model.iterations_numbers),
             'pressure': get_empty_float_scalars(self.model.iterations_numbers),
@@ -147,37 +129,22 @@ class MolecularDynamics:
             self.model.time += self.model.time_step
             debug_info(f'Step: {step}; Time: {self.model.time:.3f};')
             self.md_time_step(
-                lammps_trajectories=lammps_trajectories,
-                potential_table=potential_table,
+                potential_table=self.potential.potential_table,
                 step=step,
                 system_parameters=system_parameters,
             )
+            debug_info(f'End of step {step}.\n')
 
+        self.saver.save_configurations(
+            is_last_step=True,
+        )
         print(f'Calculation completed. Time of calculation: {datetime.now() - start}')
-
-        _start = datetime.now()
-        with open(
-                join(PATH_TO_DATA, 'system_config.txt'),
-                mode='a',
-                encoding='utf-8'
-        ) as file:
-            file.write('\n'.join(lammps_trajectories))
-        print(
-            f'LAMMPS trajectories for last {self.model.iterations_numbers % 1000} steps are saved. '
-            f'Time of saving: {datetime.now() - _start}'
+        self.saver.save_system_parameters(
+            system_parameters=system_parameters,
         )
-
-        start = datetime.now()
-        DataFrame(system_parameters).to_csv(
-            join(PATH_TO_DATA, 'system_parameters.csv'),
-            sep=';',
-            index=False,
-        )
-
-        print(f'System parameters are saved. Time of saving: {datetime.now() - start}')
 
     def run_rdf(self, steps_number: int = 1000, file_name: str = None):
-        file_name = join(PATH_TO_DATA, file_name or 'system_config_149.txt')
+        file_name = join(PATH_TO_DATA, file_name or 'system_config.txt')
         layer_thickness = 0.01
         begin_step = 1
         end_step = steps_number
@@ -214,49 +181,15 @@ class MolecularDynamics:
                     file.write(f'{radius} {rdf[i]}\n')
         print('Calculation completed.')
 
-    @staticmethod
-    def plot_rdf(file_name: str):
-        rdf_data = []
-        with open('rdf_file.txt', mode='r', encoding='utf8') as file:
-            for line in file:
-                rdf_data.append(np.array(line.rstrip().split()).astype(np.float))
-
-        rdf_data = np.array(rdf_data).transpose()
-        plt.plot(*rdf_data)
-        plt.xlabel(r'r/$\sigma$')
-        plt.ylabel('g(r)')
-        plt.ylim(bottom=0, top=100)
-        plt.savefig(file_name)
-
 
 def main(
         config_filename: str = None,
-        is_profiled: bool = False,
         is_initially_frozen: bool = True,
+        is_profiled: bool = False,
 ):
-    _config_filename = join(
-        getcwd(),
-        config_filename or 'config.json'
-    )
-    with open(_config_filename, encoding='utf8') as file:
-        config_parameters = load(file)
-
-    static = SystemStaticParameters(**config_parameters['static_parameters'])
-    external = ExternalParameters(**config_parameters['external_parameters'])
-    model = ModelingParameters(**config_parameters['modeling_parameters'])
-    initial_temperature = model.initial_temperature if not is_initially_frozen else None
-
-    dynamic = SystemDynamicParameters(
-        static=static,
-        temperature=initial_temperature,
-    )
-    potential = PotentialParameters(**config_parameters['potential_parameters'])
     md_sample = MolecularDynamics(
-        static=static,
-        dynamic=dynamic,
-        external=external,
-        model=model,
-        potential=potential,
+        config_filename=config_filename,
+        is_initially_frozen=is_initially_frozen,
     )
     if is_profiled:
         run(
