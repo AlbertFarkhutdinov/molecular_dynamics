@@ -167,11 +167,11 @@ class MolecularDynamics:
             sample.verlet.external.temperature = self.dynamic.temperature()
             if sample.verlet.external.temperature == 0:
                 sample.verlet.external.temperature = sample.model.initial_temperature
-            for step in range(1, end_step + 1):
-                print(f'Step: {step}/{end_step};')
-                if step == begin_step:
+            for rdf_step in range(1, end_step + 1):
+                print(f'Step: {rdf_step}/{end_step};')
+                if rdf_step == begin_step:
                     print(f'RDF Calculation started.')
-                if step >= begin_step:
+                if rdf_step >= begin_step:
                     distances = get_interparticle_distances(
                         distances=np.zeros(
                             (sample.static.particles_number, sample.static.particles_number),
@@ -195,7 +195,7 @@ class MolecularDynamics:
                     )
                 sample.md_time_step(
                     potential_table=sample.potential.potential_table,
-                    step=step,
+                    step=rdf_step,
                     is_rdf_calculation=True,
                 )
         else:
