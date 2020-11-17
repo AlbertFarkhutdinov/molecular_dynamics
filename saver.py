@@ -95,7 +95,7 @@ class Saver:
     def get_lammps_trajectory(self):
         lines = [
             'ITEM: TIMESTEP',
-            str(self.model.time),
+            str(f'{self.model.time:.5f}'),
             'ITEM: NUMBER OF ATOMS',
             str(self.static.particles_number),
             'ITEM: BOX BOUNDS pp pp pp',
@@ -121,22 +121,25 @@ class Saver:
     def save_configurations(
             self,
             file_name: str = None,
-            is_last_step: bool = False
+            is_last_step: bool = False,
     ):
-        file_name = join(PATH_TO_DATA, file_name or 'system_config.txt')
         _start = time()
-        with open(file_name, mode='a', encoding='utf-8') as file:
-            file.write('\n'.join(self.lammps_configurations))
-
+        file_name = join(PATH_TO_DATA, file_name or 'system_config.txt')
+        is_saved = False
+        _saving_step = self.configuration_saving_step
         if not is_last_step and self.step % self.configuration_saving_step == 0:
-            _saving_step = self.configuration_saving_step
-        else:
+            is_saved = True
+        elif is_last_step:
             _saving_step = self.model.iterations_numbers % self.configuration_saving_step
-        print(
-            f'LAMMPS trajectories for last {_saving_step} steps are saved. '
-            f'Time of saving: {time() - _start} seconds'
-        )
-        self.lammps_configurations = []
+            is_saved = True
+        if is_saved:
+            with open(file_name, mode='a', encoding='utf-8') as file:
+                file.write('\n'.join(self.lammps_configurations))
+            print(
+                f'LAMMPS trajectories for last {_saving_step} steps are saved. '
+                f'Time of saving: {time() - _start:.5f} seconds'
+            )
+            self.lammps_configurations = []
 
     @staticmethod
     def save_dict(

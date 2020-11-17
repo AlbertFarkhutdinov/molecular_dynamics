@@ -123,7 +123,7 @@ class MolecularDynamics:
             'total_energy': get_empty_float_scalars(self.model.iterations_numbers),
         }
         for step in range(1, self.model.iterations_numbers + 1):
-            if step % 1000:
+            if step % 4000 == 0:
                 self.run_rdf()
             self.model.time += self.model.time_step
             debug_info(f'Step: {step}; Time: {self.model.time:.3f};')
@@ -156,21 +156,23 @@ class MolecularDynamics:
             # file_name: str = None,
     ):
         start = time()
-        print(f'RDF calculation for T = {self.dynamic.temperature()}')
         layer_thickness = 0.01
         begin_step = 501
         end_step = steps_number
-        rdf = get_empty_float_scalars(10 * self.static.particles_number)
+        rdf = get_empty_float_scalars(20 * self.static.particles_number)
+        print(f'********RDF calculation for T = {self.dynamic.temperature():.5f}********')
 
         if not is_positions_from_file:
             sample = deepcopy(self)
-            sample.verlet.external.temperature = self.dynamic.temperature()
+            sample.verlet.external.temperature = round(self.dynamic.temperature(), 5)
             if sample.verlet.external.temperature == 0:
                 sample.verlet.external.temperature = sample.model.initial_temperature
+            debug_info(f'External Temperature: {sample.verlet.external.temperature}')
             for rdf_step in range(1, end_step + 1):
-                print(f'Step: {rdf_step}/{end_step};')
                 if rdf_step == begin_step:
-                    print(f'RDF Calculation started.')
+                    debug_info(f'RDF Step: {rdf_step}')
+                    print(f'********RDF Calculation started********')
+                print(f'Step: {rdf_step}/{end_step};')
                 if rdf_step >= begin_step:
                     distances = get_interparticle_distances(
                         distances=np.zeros(
@@ -182,11 +184,17 @@ class MolecularDynamics:
                     )
                     layer_numbers = (distances / layer_thickness).astype(np.int)
                     max_layer_number = layer_numbers.max()
+                    debug_info(f'max_layer_number: {max_layer_number}')
                     particles_in_layer = get_empty_int_scalars(max_layer_number + 1)
                     layers, particles = np.unique(layer_numbers, return_counts=True)
+                    debug_info(f'layers.shape: {layers.shape}')
+                    debug_info(f'particles.shape: {particles.shape}')
                     for i, layer in enumerate(layers):
                         particles_in_layer[layer] = particles[i]
+                    debug_info(f'particles_in_layer.shape: {particles_in_layer.shape}')
                     radiuses = layer_thickness * (0.5 + np.arange(max_layer_number + 1))
+                    debug_info(f'radiuses.shape: {radiuses.shape}')
+                    debug_info(f'rdf.shape: {rdf.shape}')
                     rdf[:max_layer_number + 1] += (
                             2.0 * sample.static.get_cell_volume()
                             / (4.0 * pi * radiuses * radiuses
@@ -200,6 +208,7 @@ class MolecularDynamics:
                 )
         else:
             pass
+            # TODO implementation of reading from file
             # positions = get_empty_vectors(self.static.particles_number)
             # file_name = join(PATH_TO_DATA, file_name or 'system_config.txt')
             # with open(file_name, mode='r', encoding='utf8') as file:
@@ -211,13 +220,14 @@ class MolecularDynamics:
             #         )
 
         rdf = rdf[:np.nonzero(rdf)[0][-1]] / (end_step - begin_step + 1)
+        debug_info(f'rdf.shape: {rdf.shape}')
         radiuses = layer_thickness * (0.5 + np.arange(rdf.size))
         Saver().save_rdf(
             rdf_data={
                 'radius': radiuses[radiuses <= self.static.cell_dimensions[0] / 2.0],
                 'rdf': rdf[radiuses <= self.static.cell_dimensions[0] / 2.0],
             },
-            file_name=f'rdf_file_T_{self.dynamic.temperature():.3f}.csv'
+            file_name=f'rdf_file_T_{self.dynamic.temperature():.5f}.csv'
         )
         print(f'Calculation completed. Time of calculation: {time() - start} seconds.')
 
@@ -234,10 +244,10 @@ def main(
 
 if __name__ == '__main__':
     np.set_printoptions(threshold=5000)
-    md_sample = MolecularDynamics(
-        config_filename=None,
-        is_initially_frozen=True,
-    )
+    # md_sample = MolecularDynamics(
+    #     config_filename=None,
+    #     is_initially_frozen=True,
+    # )
 
     # def f(x):
     #     for i in range(x):

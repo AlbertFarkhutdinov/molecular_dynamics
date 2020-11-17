@@ -11,7 +11,7 @@
     "temperature": 2.8
   },
   "modeling_parameters": {
-    "iterations_numbers": 1000,
+    "iterations_numbers": 40000,
     "time_step": 0.005,
     "initial_temperature": 1e-5
   },
