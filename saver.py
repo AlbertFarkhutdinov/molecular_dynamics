@@ -1,4 +1,4 @@
-from time import time
+from datetime import datetime
 from os.path import join
 
 import numpy as np
@@ -7,7 +7,7 @@ from pandas import DataFrame
 from constants import PATH_TO_DATA
 from dynamic_parameters import SystemDynamicParameters
 from modeling_parameters import ModelingParameters
-from helpers import get_empty_vectors
+from helpers import get_empty_vectors, get_formatted_time
 from static_parameters import SystemStaticParameters
 
 
@@ -32,7 +32,10 @@ class Saver:
         self.configuration_saving_step = configuration_saving_step
 
     def save_configuration(self, file_name: str = None):
-        file_name = join(PATH_TO_DATA, file_name or 'system_config_149.txt')
+        file_name = join(
+            PATH_TO_DATA,
+            file_name or f'system_config_{get_formatted_time()}.txt'
+        )
         with open(file_name, mode='w', encoding='utf-8') as file:
             lines = [
                 '\n'.join(self.static.cell_dimensions.astype(str)),
@@ -123,8 +126,11 @@ class Saver:
             file_name: str = None,
             is_last_step: bool = False,
     ):
-        _start = time()
-        file_name = join(PATH_TO_DATA, file_name or 'system_config.txt')
+        _start = datetime.now()
+        file_name = join(
+            PATH_TO_DATA,
+            file_name or f'system_config_{get_formatted_time()}.txt'
+        )
         is_saved = False
         _saving_step = self.configuration_saving_step
         if not is_last_step and self.step % self.configuration_saving_step == 0:
@@ -137,7 +143,7 @@ class Saver:
                 file.write('\n'.join(self.lammps_configurations))
             print(
                 f'LAMMPS trajectories for last {_saving_step} steps are saved. '
-                f'Time of saving: {time() - _start:.5f} seconds'
+                f'Time of saving: {datetime.now() - _start}'
             )
             self.lammps_configurations = []
 
@@ -148,14 +154,14 @@ class Saver:
             data_name: str,
             file_name: str = None,
     ):
-        _start = time()
+        _start = datetime.now()
         _file_name = join(PATH_TO_DATA, file_name or default_file_name)
         DataFrame(data).to_csv(
             _file_name,
             sep=';',
             index=False,
         )
-        print(f'{data_name} are saved. Time of saving: {time() - _start} seconds')
+        print(f'{data_name} are saved. Time of saving: {datetime.now() - _start}')
 
     def save_system_parameters(
             self,
@@ -164,7 +170,7 @@ class Saver:
     ):
         self.save_dict(
             data=system_parameters,
-            default_file_name='system_parameters.csv',
+            default_file_name=f'system_parameters_{get_formatted_time()}.csv',
             data_name='System parameters',
             file_name=file_name,
         )
@@ -176,7 +182,7 @@ class Saver:
     ):
         self.save_dict(
             data=rdf_data,
-            default_file_name='rdf_file.csv',
+            default_file_name=f'rdf_file_{get_formatted_time()}.csv',
             data_name='RDF values',
             file_name=file_name,
         )

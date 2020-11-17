@@ -96,22 +96,27 @@ def update_list_cycle(
 
 @numba.jit(nopython=True)
 def get_interparticle_distances(positions, distances, cell_dimensions):
+    # TODO debugging
     for i in range(len(distances[0]) - 1):
         for j in range(i + 1, len(distances[0])):
             radius_vector = positions[i] - positions[j]
-            if radius_vector[0] > cell_dimensions[0] / 2:
-                radius_vector[0] -= cell_dimensions[0]
-            elif radius_vector[0] < -cell_dimensions[0] / 2:
-                radius_vector[0] += cell_dimensions[0]
-            if radius_vector[1] > cell_dimensions[1] / 2:
-                radius_vector[1] -= cell_dimensions[1]
-            elif radius_vector[1] < -cell_dimensions[1] / 2:
-                radius_vector[1] += cell_dimensions[1]
-            if radius_vector[2] > cell_dimensions[2] / 2:
-                radius_vector[2] -= cell_dimensions[2]
-            elif radius_vector[2] < -cell_dimensions[2] / 2:
-                radius_vector[2] += cell_dimensions[2]
-            distances[i, j] = np.sqrt((radius_vector * radius_vector).sum())
+            before = radius_vector[:]
+            for k in range(3):
+                if radius_vector[k] > cell_dimensions[k] / 2:
+                    radius_vector[k] -= cell_dimensions[k]
+                elif radius_vector[k] < -cell_dimensions[k] / 2:
+                    radius_vector[k] += cell_dimensions[k]
+            if not (
+                    -(cell_dimensions[0] / 2) < radius_vector[0] < (cell_dimensions[0] / 2)
+                    and -(cell_dimensions[1] / 2) < radius_vector[1] < (cell_dimensions[1] / 2)
+                    and -(cell_dimensions[2] / 2) < radius_vector[2] < (cell_dimensions[2] / 2)
+            ):
+                print(i, j, cell_dimensions, before, radius_vector)
+            assert -(cell_dimensions[0] / 2) < radius_vector[0] < (cell_dimensions[0] / 2)
+            assert -(cell_dimensions[1] / 2) < radius_vector[1] < (cell_dimensions[1] / 2)
+            assert -(cell_dimensions[2] / 2) < radius_vector[2] < (cell_dimensions[2] / 2)
+            distances[i, j] = (radius_vector * radius_vector).sum() ** 0.5
+            assert distances[i, j] == (radius_vector[0] ** 2 + radius_vector[1] ** 2 + radius_vector[2] ** 2) ** 0.5
     return distances
 
 

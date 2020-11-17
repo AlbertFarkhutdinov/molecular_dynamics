@@ -14,7 +14,7 @@ pressure = epsilon / (sigma ^ 3) = 4.2E7 pascal = 4.2E2 atmospheres
 
 
 from copy import deepcopy
-from cProfile import run
+# from cProfile import run
 from json import load
 from math import pi
 from datetime import datetime
@@ -27,7 +27,7 @@ import numpy as np
 
 from dynamic_parameters import SystemDynamicParameters
 from external_parameters import ExternalParameters
-from helpers import get_empty_float_scalars, get_empty_int_scalars
+from helpers import get_empty_float_scalars, get_empty_int_scalars, get_formatted_time
 from log_config import debug_info, logger_wraps
 from modeling_parameters import ModelingParameters
 from numba_procedures import get_interparticle_distances
@@ -123,7 +123,7 @@ class MolecularDynamics:
             'total_energy': get_empty_float_scalars(self.model.iterations_numbers),
         }
         for step in range(1, self.model.iterations_numbers + 1):
-            if step % 4000 == 0:
+            if step == 1 or step % 4000 == 0:
                 self.run_rdf()
             self.model.time += self.model.time_step
             debug_info(f'Step: {step}; Time: {self.model.time:.3f};')
@@ -159,20 +159,20 @@ class MolecularDynamics:
         layer_thickness = 0.01
         begin_step = 501
         end_step = steps_number
-        rdf = get_empty_float_scalars(20 * self.static.particles_number)
-        print(f'********RDF calculation for T = {self.dynamic.temperature():.5f}********')
+        sample = deepcopy(self)
+        rdf = get_empty_float_scalars(20 * sample.static.particles_number)
+        print(f'********RDF calculation for T = {sample.dynamic.temperature():.5f}********')
 
         if not is_positions_from_file:
-            sample = deepcopy(self)
             sample.verlet.external.temperature = round(self.dynamic.temperature(), 5)
             if sample.verlet.external.temperature == 0:
                 sample.verlet.external.temperature = sample.model.initial_temperature
             debug_info(f'External Temperature: {sample.verlet.external.temperature}')
             for rdf_step in range(1, end_step + 1):
                 if rdf_step == begin_step:
-                    debug_info(f'RDF Step: {rdf_step}')
+                    debug_info(f'RDF Step: {rdf_step}, Temperature = {sample.dynamic.temperature():.3f}')
                     print(f'********RDF Calculation started********')
-                print(f'Step: {rdf_step}/{end_step};')
+                print(f'Step: {rdf_step}/{end_step}, Temperature = {sample.dynamic.temperature():.3f}')
                 if rdf_step >= begin_step:
                     distances = get_interparticle_distances(
                         distances=np.zeros(
@@ -182,6 +182,7 @@ class MolecularDynamics:
                         positions=sample.dynamic.positions,
                         cell_dimensions=sample.static.cell_dimensions,
                     )
+                    debug_info(f'maximum distance: {distances.max()}')
                     layer_numbers = (distances / layer_thickness).astype(np.int)
                     max_layer_number = layer_numbers.max()
                     debug_info(f'max_layer_number: {max_layer_number}')
@@ -224,10 +225,10 @@ class MolecularDynamics:
         radiuses = layer_thickness * (0.5 + np.arange(rdf.size))
         Saver().save_rdf(
             rdf_data={
-                'radius': radiuses[radiuses <= self.static.cell_dimensions[0] / 2.0],
-                'rdf': rdf[radiuses <= self.static.cell_dimensions[0] / 2.0],
+                'radius': radiuses[radiuses <= sample.static.cell_dimensions[0] / 2.0],
+                'rdf': rdf[radiuses <= sample.static.cell_dimensions[0] / 2.0],
             },
-            file_name=f'rdf_file_T_{self.dynamic.temperature():.5f}.csv'
+            file_name=f'rdf_file_T_{sample.dynamic.temperature():.5f}_{get_formatted_time()}.csv'
         )
         print(f'Calculation completed. Time of calculation: {time() - start} seconds.')
 
@@ -271,4 +272,4 @@ if __name__ == '__main__':
     #     'md_sample.main()',
     #     sort=2,
     # )
-    main()
+    main(is_initially_frozen=False)
