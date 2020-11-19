@@ -169,10 +169,14 @@ class MolecularDynamics:
                 sample.verlet.external.temperature = sample.model.initial_temperature
             debug_info(f'External Temperature: {sample.verlet.external.temperature}')
             for rdf_step in range(1, end_step + 1):
+                message = (
+                    f'RDF Step: {rdf_step}/{end_step}, '
+                    f'Temperature = {sample.dynamic.temperature():.3f} epsilon/k_B'
+                )
                 if rdf_step == begin_step:
-                    debug_info(f'RDF Step: {rdf_step}, Temperature = {sample.dynamic.temperature():.3f}')
                     print(f'********RDF Calculation started********')
-                print(f'Step: {rdf_step}/{end_step}, Temperature = {sample.dynamic.temperature():.3f}')
+                debug_info(message)
+                print(message)
                 if rdf_step >= begin_step:
                     distances = get_interparticle_distances(
                         distances=np.zeros(
@@ -228,7 +232,7 @@ class MolecularDynamics:
                 'radius': radiuses[radiuses <= sample.static.cell_dimensions[0] / 2.0],
                 'rdf': rdf[radiuses <= sample.static.cell_dimensions[0] / 2.0],
             },
-            file_name=f'rdf_file_T_{sample.dynamic.temperature():.5f}_{get_formatted_time()}.csv'
+            file_name=f'rdf_file_T_{sample.dynamic.temperature():.5f}.csv'
         )
         print(f'Calculation completed. Time of calculation: {time() - start} seconds.')
 

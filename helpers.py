@@ -24,4 +24,4 @@ def sign(value: float) -> int:
 
 
 def get_formatted_time():
-    return datetime.now().strftime("%Y-%m-%d_%H:%M")
+    return datetime.now().strftime("%Y-%m-%d_%H_%M")
