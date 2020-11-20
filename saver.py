@@ -170,7 +170,7 @@ class Saver:
     ):
         self.save_dict(
             data=system_parameters,
-            default_file_name=f'system_parameters_{get_formatted_time()}.csv',
+            default_file_name=f'system_parameters.csv',
             data_name='System parameters',
             file_name=file_name,
         )

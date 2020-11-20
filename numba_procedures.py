@@ -6,12 +6,14 @@ import numpy as np
 def get_radius_vector(index_1, index_2, positions, cell_dimensions):
     radius_vector = positions[index_1] - positions[index_2]
     for k in range(3):
-        if abs(radius_vector[k]) > cell_dimensions[k] / 2:
-            radius_vector[k] -= round(radius_vector[k] / cell_dimensions[k]) * cell_dimensions[k]
+        if radius_vector[k] < -cell_dimensions[k] / 2 or radius_vector[k] >= cell_dimensions[k] / 2:
+            radius_vector[k] -= round(radius_vector[k] / cell_dimensions[k] + 1e-5) * cell_dimensions[k]
 
-    assert -(cell_dimensions[0] / 2) < radius_vector[0] < (cell_dimensions[0] / 2)
-    assert -(cell_dimensions[1] / 2) < radius_vector[1] < (cell_dimensions[1] / 2)
-    assert -(cell_dimensions[2] / 2) < radius_vector[2] < (cell_dimensions[2] / 2)
+    assert (
+            -(cell_dimensions[0] / 2) <= radius_vector[0] < (cell_dimensions[0] / 2)
+            or -(cell_dimensions[1] / 2) <= radius_vector[1] < (cell_dimensions[1] / 2)
+            or -(cell_dimensions[2] / 2) <= radius_vector[2] < (cell_dimensions[2] / 2)
+    )
 
     return radius_vector
 
@@ -96,19 +98,16 @@ def update_list_cycle(
 def get_interparticle_distances(positions, distances, cell_dimensions):
     for i in range(len(distances[0]) - 1):
         for j in range(i + 1, len(distances[0])):
+            distance = 0
             radius_vector = positions[i] - positions[j]
             for k in range(3):
-                if abs(radius_vector[k]) > cell_dimensions[k] / 2:
-                    radius_vector[k] -= round(radius_vector[k] / cell_dimensions[k]) * cell_dimensions[k]
-
-                # if abs(radius_vector[k]) > cell_dimensions[k] / 2:
-                #     radius_vector[k] -= int(2 * radius_vector[k] / cell_dimensions[k]) * cell_dimensions[k]
-                #
-                # if abs(radius_vector[k]) > cell_dimensions[k] / 2:
-                #     radius_vector[k] -= int(2 * radius_vector[k] / cell_dimensions[k]) * cell_dimensions[k] / 2
-
-            assert -(cell_dimensions[0] / 2) < radius_vector[0] < (cell_dimensions[0] / 2)
-            assert -(cell_dimensions[1] / 2) < radius_vector[1] < (cell_dimensions[1] / 2)
-            assert -(cell_dimensions[2] / 2) < radius_vector[2] < (cell_dimensions[2] / 2)
-            distances[i, j] = (radius_vector * radius_vector).sum() ** 0.5
+                if radius_vector[k] < -cell_dimensions[k] / 2 or radius_vector[k] >= cell_dimensions[k] / 2:
+                    radius_vector[k] -= round(radius_vector[k] / cell_dimensions[k] + 1e-5) * cell_dimensions[k]
+                distance += radius_vector[k] * radius_vector[k]
+            assert (
+                    -(cell_dimensions[0] / 2) <= radius_vector[0] < (cell_dimensions[0] / 2)
+                    or -(cell_dimensions[1] / 2) <= radius_vector[1] < (cell_dimensions[1] / 2)
+                    or -(cell_dimensions[2] / 2) <= radius_vector[2] < (cell_dimensions[2] / 2)
+            )
+            distances[i, j] = distance ** 0.5
     return distances

@@ -27,7 +27,7 @@ import numpy as np
 
 from dynamic_parameters import SystemDynamicParameters
 from external_parameters import ExternalParameters
-from helpers import get_empty_float_scalars, get_empty_int_scalars, get_formatted_time
+from helpers import get_empty_float_scalars, get_empty_int_scalars
 from log_config import debug_info, logger_wraps
 from modeling_parameters import ModelingParameters
 from numba_procedures import get_interparticle_distances
@@ -253,14 +253,15 @@ if __name__ == '__main__':
     #     config_filename=None,
     #     is_initially_frozen=True,
     # )
-
+    # distances = np.zeros(
+    #     (md_sample.static.particles_number, md_sample.static.particles_number),
+    #     dtype=np.float,
+    # )
+    #
     # def f(x):
     #     for i in range(x):
     #         get_interparticle_distances(
-    #             distances=np.zeros(
-    #                 (md_sample.static.particles_number, md_sample.static.particles_number),
-    #                 dtype=np.float,
-    #             ),
+    #             distances=distances,
     #             positions=md_sample.dynamic.positions,
     #             cell_dimensions=md_sample.static.cell_dimensions,
     #         )
