@@ -171,7 +171,7 @@ class MolecularDynamics:
             for rdf_step in range(1, end_step + 1):
                 message = (
                     f'RDF Step: {rdf_step}/{end_step}, '
-                    f'Temperature = {sample.dynamic.temperature():.3f} epsilon/k_B'
+                    f'Temperature = {sample.dynamic.temperature():.5f} epsilon/k_B'
                 )
                 if rdf_step == begin_step:
                     print(f'********RDF Calculation started********')

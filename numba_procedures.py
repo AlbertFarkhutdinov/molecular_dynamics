@@ -1,18 +1,13 @@
 import numba
 import numpy as np
 
-from helpers import sign
-
 
 @numba.jit(nopython=True)
 def get_radius_vector(index_1, index_2, positions, cell_dimensions):
     radius_vector = positions[index_1] - positions[index_2]
     for k in range(3):
-        # TODO правильное преобразование
-        # -30, -25 -20, -15, -10, -5, 0, 5, 10, 15, 20, 25
-        # -6, -1 4, 9, 14, -5, 0, 5, -14, -9, -4, 1
         if abs(radius_vector[k]) > cell_dimensions[k] / 2:
-            radius_vector[k] -= int(2 * radius_vector[k] / cell_dimensions[k]) * cell_dimensions[k]
+            radius_vector[k] -= round(radius_vector[k] / cell_dimensions[k]) * cell_dimensions[k]
 
     assert -(cell_dimensions[0] / 2) < radius_vector[0] < (cell_dimensions[0] / 2)
     assert -(cell_dimensions[1] / 2) < radius_vector[1] < (cell_dimensions[1] / 2)
@@ -103,14 +98,14 @@ def get_interparticle_distances(positions, distances, cell_dimensions):
         for j in range(i + 1, len(distances[0])):
             radius_vector = positions[i] - positions[j]
             for k in range(3):
-                # TODO правильное преобразование
-                # -30, -25 -20, -15, -10, -5, 0, 5, 10, 15, 20, 25
-                # -6, -1 4, 9, 14, -5, 0, 5, -14, -9, -4, 1
                 if abs(radius_vector[k]) > cell_dimensions[k] / 2:
-                    radius_vector[k] -= int(2 * radius_vector[k] / cell_dimensions[k]) * cell_dimensions[k]
+                    radius_vector[k] -= round(radius_vector[k] / cell_dimensions[k]) * cell_dimensions[k]
 
-                if abs(radius_vector[k]) > cell_dimensions[k] / 2:
-                    radius_vector[k] -= int(2 * radius_vector[k] / cell_dimensions[k]) * cell_dimensions[k] / 2
+                # if abs(radius_vector[k]) > cell_dimensions[k] / 2:
+                #     radius_vector[k] -= int(2 * radius_vector[k] / cell_dimensions[k]) * cell_dimensions[k]
+                #
+                # if abs(radius_vector[k]) > cell_dimensions[k] / 2:
+                #     radius_vector[k] -= int(2 * radius_vector[k] / cell_dimensions[k]) * cell_dimensions[k] / 2
 
             assert -(cell_dimensions[0] / 2) < radius_vector[0] < (cell_dimensions[0] / 2)
             assert -(cell_dimensions[1] / 2) < radius_vector[1] < (cell_dimensions[1] / 2)

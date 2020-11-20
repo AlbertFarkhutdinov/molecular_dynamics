@@ -129,7 +129,7 @@ class Saver:
         _start = datetime.now()
         file_name = join(
             PATH_TO_DATA,
-            file_name or f'system_config_{get_formatted_time()}.txt'
+            file_name or f'system_config.txt'
         )
         is_saved = False
         _saving_step = self.configuration_saving_step

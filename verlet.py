@@ -1,5 +1,6 @@
 import numpy as np
 
+from constants import TEMPERATURE_MINIMUM
 from dynamic_parameters import SystemDynamicParameters
 from external_parameters import ExternalParameters
 from helpers import get_empty_float_scalars, get_empty_int_scalars, get_empty_vectors, sign
@@ -61,7 +62,9 @@ class Verlet:
                 * self.external.heating_velocity
                 * self.model.time_step
         )
-        if temperature == 0:
+        if self.model.initial_temperature < TEMPERATURE_MINIMUM:
+            self.model.initial_temperature = TEMPERATURE_MINIMUM
+        if temperature <= 0:
             temperature = self.model.initial_temperature
         lmbd = (self.model.initial_temperature / temperature) ** 0.5
 
