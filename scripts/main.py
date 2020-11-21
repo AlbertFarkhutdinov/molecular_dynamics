@@ -124,7 +124,7 @@ class MolecularDynamics:
             'total_energy': get_empty_float_scalars(self.model.iterations_numbers),
         }
         for step in range(1, self.model.iterations_numbers + 1):
-            if step == 1 or step % self.rdf_parameters['rdf_saving_step'] == 0:
+            if step in (1, 1000) or step % self.rdf_parameters['rdf_saving_step'] == 0:
                 self.run_rdf()
             self.model.time += self.model.time_step
             debug_info(f'Step: {step}; Time: {self.model.time:.3f};')
@@ -152,7 +152,6 @@ class MolecularDynamics:
 
     def run_rdf(
             self,
-            steps_number: int = 1500,
             is_positions_from_file: bool = False
             # file_name: str = None,
     ):
@@ -251,7 +250,6 @@ def main(
 if __name__ == '__main__':
     np.set_printoptions(threshold=5000)
     # md_sample = MolecularDynamics(
-    #     config_filename=None,
     #     is_initially_frozen=True,
     # )
     # distances = np.zeros(
@@ -260,7 +258,7 @@ if __name__ == '__main__':
     # )
     #
     # def f(x):
-    #     for i in range(x):
+    #     for _ in range(x):
     #         get_interparticle_distances(
     #             distances=distances,
     #             positions=md_sample.dynamic.positions,
@@ -268,14 +266,13 @@ if __name__ == '__main__':
     #         )
     #
     # f(1)
-    # run('f(5)')
+    # run('f(1)')
 
-    # run(
-    #     'md_sample.run_rdf()',
-    #     sort=2,
-    # )
     # run(
     #     'md_sample.main()',
     #     sort=2,
     # )
-    main(is_initially_frozen=False)
+    main(
+        config_filename='book_chapter_4_stage_1.json',
+        is_initially_frozen=False,
+    )

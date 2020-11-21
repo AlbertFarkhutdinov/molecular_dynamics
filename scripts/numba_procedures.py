@@ -1,11 +1,11 @@
-import numba
+from numba import njit, prange
 import numpy as np
 
 
-@numba.jit(nopython=True)
+@njit
 def get_radius_vector(index_1, index_2, positions, cell_dimensions):
     radius_vector = positions[index_1] - positions[index_2]
-    for k in range(3):
+    for k in prange(3):
         if radius_vector[k] < -cell_dimensions[k] / 2 or radius_vector[k] >= cell_dimensions[k] / 2:
             radius_vector[k] -= round(radius_vector[k] / cell_dimensions[k] + 1e-5) * cell_dimensions[k]
 
@@ -18,7 +18,7 @@ def get_radius_vector(index_1, index_2, positions, cell_dimensions):
     return radius_vector
 
 
-@numba.jit(nopython=True)
+@njit
 def lf_cycle(
         particles_number,
         verlet_list,
@@ -32,8 +32,8 @@ def lf_cycle(
         cell_dimensions,
 ):
     virial = 0
-    for i in range(particles_number - 1):
-        for k in range(
+    for i in prange(particles_number - 1):
+        for k in prange(
                 marker_1[i],
                 marker_2[i] + 1,
         ):
@@ -61,7 +61,7 @@ def lf_cycle(
     return virial
 
 
-@numba.jit(nopython=True)
+@njit
 def update_list_cycle(
         rng: float,
         advances: np.ndarray,
@@ -73,8 +73,8 @@ def update_list_cycle(
         verlet_list: np.ndarray,
 ):
     k = 1
-    for i in range(particles_number - 1):
-        for j in range(i + 1, particles_number):
+    for i in prange(particles_number - 1):
+        for j in prange(i + 1, particles_number):
             radius_vector = get_radius_vector(
                 index_1=i,
                 index_2=j,
@@ -94,20 +94,21 @@ def update_list_cycle(
         marker_2[i] = k - 1
 
 
-@numba.jit(nopython=True)
+@njit
 def get_interparticle_distances(positions, distances, cell_dimensions):
-    for i in range(len(distances[0]) - 1):
-        for j in range(i + 1, len(distances[0])):
+    for i in prange(len(distances[0]) - 1):
+        for j in prange(i + 1, len(distances[0])):
             distance = 0
             radius_vector = positions[i] - positions[j]
-            for k in range(3):
+            for k in prange(3):
                 if radius_vector[k] < -cell_dimensions[k] / 2 or radius_vector[k] >= cell_dimensions[k] / 2:
                     radius_vector[k] -= round(radius_vector[k] / cell_dimensions[k] + 1e-5) * cell_dimensions[k]
                 distance += radius_vector[k] * radius_vector[k]
-            assert (
-                    -(cell_dimensions[0] / 2) <= radius_vector[0] < (cell_dimensions[0] / 2)
-                    or -(cell_dimensions[1] / 2) <= radius_vector[1] < (cell_dimensions[1] / 2)
-                    or -(cell_dimensions[2] / 2) <= radius_vector[2] < (cell_dimensions[2] / 2)
-            )
+
+            # assert (
+            #         -(cell_dimensions[0] / 2) <= radius_vector[0] < (cell_dimensions[0] / 2)
+            #         or -(cell_dimensions[1] / 2) <= radius_vector[1] < (cell_dimensions[1] / 2)
+            #         or -(cell_dimensions[2] / 2) <= radius_vector[2] < (cell_dimensions[2] / 2)
+            # )
             distances[i, j] = distance ** 0.5
     return distances

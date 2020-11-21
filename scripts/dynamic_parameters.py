@@ -108,6 +108,7 @@ class SystemDynamicParameters:
             density: float = None,
             cell_volume: float = None,
     ) -> float:
+        # TODO Check pressure calculation (compare 2020-11-21 and the book, p.87)
         _density = density or self.static.get_density()
         _cell_volume = cell_volume or self.static.get_cell_volume()
         return _density * temperature + virial / (3 * _cell_volume)
