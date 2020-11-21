@@ -1,4 +1,4 @@
-from typing import Tuple, Union
+from typing import Iterable, Union
 
 import numpy as np
 
@@ -9,14 +9,14 @@ class SystemStaticParameters:
             self,
             init_type: int,
             lattice_constant: float,
-            particles_number: Union[int, Tuple[int, int, int]],
+            particles_number: Union[int, Iterable],
             crystal_type='пк',
     ):
         self.init_type = init_type
         self.lattice_constant = lattice_constant
         self.crystal_type = crystal_type
         self.nb = 4 if self.crystal_type == 'гцк' else 1
-        if init_type == 1 and isinstance(particles_number, tuple):
+        if init_type == 1 and isinstance(particles_number, Iterable):
             self.particles_numbers = np.array(particles_number, dtype=np.int)
             self.cell_dimensions = np.array(particles_number, dtype=np.float) * self.lattice_constant
             self.particles_number = self.nb * self.particles_numbers.prod()

@@ -2,9 +2,9 @@ import numpy as np
 import numba
 from scipy.spatial.distance import pdist, squareform
 
-from static_parameters import SystemStaticParameters
-from helpers import get_empty_vectors
-from log_config import logger_wraps
+from scripts.static_parameters import SystemStaticParameters
+from scripts.helpers import get_empty_vectors
+from scripts.log_config import logger_wraps
 
 
 class SystemDynamicParameters:
@@ -32,6 +32,7 @@ class SystemDynamicParameters:
         self.displacements = get_empty_vectors(self.particles_number)
 
     def get_initial_velocities(self, temperature: float) -> None:
+        np.random.seed(0)
         _sigma = np.sqrt(temperature)
         velocities = get_empty_vectors(self.particles_number).transpose()
         for i in range(3):
@@ -67,6 +68,7 @@ class SystemDynamicParameters:
 
     @logger_wraps()
     def generate_random_state(self) -> None:
+        np.random.seed(0)
         self.positions[0] = np.random.random(3) * self.static.cell_dimensions
         for j in range(1, self.static.particles_number):
             is_distance_too_small = True

@@ -1,3 +1,5 @@
+from datetime import datetime
+
 import numpy as np
 
 
@@ -19,3 +21,7 @@ def sign(value: float) -> int:
     if value < 0:
         return -1
     return 0
+
+
+def get_formatted_time():
+    return datetime.now().strftime("%Y-%m-%d_%H_%M")
