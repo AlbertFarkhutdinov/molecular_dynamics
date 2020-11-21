@@ -18,23 +18,23 @@ from copy import deepcopy
 from json import load
 from math import pi
 from datetime import datetime
-from os import getcwd
 from os.path import join
 from time import time
 from typing import Optional
 
 import numpy as np
 
-from dynamic_parameters import SystemDynamicParameters
-from external_parameters import ExternalParameters
-from helpers import get_empty_float_scalars, get_empty_int_scalars
-from log_config import debug_info, logger_wraps
-from modeling_parameters import ModelingParameters
-from numba_procedures import get_interparticle_distances
-from potential_parameters import PotentialParameters
-from saver import Saver
-from static_parameters import SystemStaticParameters
-from verlet import Verlet
+from scripts.constants import PATH_TO_CONFIG
+from scripts.dynamic_parameters import SystemDynamicParameters
+from scripts.external_parameters import ExternalParameters
+from scripts.helpers import get_empty_float_scalars, get_empty_int_scalars
+from scripts.log_config import debug_info, logger_wraps
+from scripts.modeling_parameters import ModelingParameters
+from scripts.numba_procedures import get_interparticle_distances
+from scripts.potential_parameters import PotentialParameters
+from scripts.saver import Saver
+from scripts.static_parameters import SystemStaticParameters
+from scripts.verlet import Verlet
 
 
 class MolecularDynamics:
@@ -45,7 +45,7 @@ class MolecularDynamics:
             is_initially_frozen: bool = True,
     ):
         _config_filename = join(
-            getcwd(),
+            PATH_TO_CONFIG,
             config_filename or 'config.json'
         )
         with open(_config_filename, encoding='utf8') as file:
@@ -71,6 +71,7 @@ class MolecularDynamics:
             model=self.model,
             **config_parameters['saver_parameters'],
         )
+        self.rdf_parameters = config_parameters['rdf_parameters']
 
     def md_time_step(
             self,
@@ -123,7 +124,7 @@ class MolecularDynamics:
             'total_energy': get_empty_float_scalars(self.model.iterations_numbers),
         }
         for step in range(1, self.model.iterations_numbers + 1):
-            if step == 1 or step % 4000 == 0:
+            if step == 1 or step % self.rdf_parameters['rdf_saving_step'] == 0:
                 self.run_rdf()
             self.model.time += self.model.time_step
             debug_info(f'Step: {step}; Time: {self.model.time:.3f};')
@@ -157,8 +158,8 @@ class MolecularDynamics:
     ):
         start = time()
         layer_thickness = 0.01
-        begin_step = 501
-        end_step = steps_number
+        begin_step = self.rdf_parameters['equilibration_steps'] + 1
+        end_step = begin_step - 1 + self.rdf_parameters['calculation_steps']
         sample = deepcopy(self)
         rdf = get_empty_float_scalars(20 * sample.static.particles_number)
         print(f'********RDF calculation for T = {sample.dynamic.temperature():.5f}********')
@@ -232,7 +233,7 @@ class MolecularDynamics:
                 'radius': radiuses[radiuses <= sample.static.cell_dimensions[0] / 2.0],
                 'rdf': rdf[radiuses <= sample.static.cell_dimensions[0] / 2.0],
             },
-            file_name=f'rdf_file_T_{sample.dynamic.temperature():.5f}.csv'
+            file_name=f'rdf_file_T_{sample.verlet.external.temperature:.5f}.csv'
         )
         print(f'Calculation completed. Time of calculation: {time() - start} seconds.')
 

@@ -1,6 +1,6 @@
 import numpy as np
 
-from helpers import get_empty_float_scalars
+from scripts.helpers import get_empty_float_scalars
 
 
 class PotentialParameters:

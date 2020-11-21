@@ -2,9 +2,9 @@ import numpy as np
 import numba
 from scipy.spatial.distance import pdist, squareform
 
-from static_parameters import SystemStaticParameters
-from helpers import get_empty_vectors
-from log_config import logger_wraps
+from scripts.static_parameters import SystemStaticParameters
+from scripts.helpers import get_empty_vectors
+from scripts.log_config import logger_wraps
 
 
 class SystemDynamicParameters:

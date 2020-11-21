@@ -2,7 +2,7 @@ from datetime import date
 import functools
 from os.path import join
 
-from constants import PATH_TO_DATA, IS_LOGGED
+from scripts.constants import PATH_TO_DATA, IS_LOGGED
 
 
 if IS_LOGGED:

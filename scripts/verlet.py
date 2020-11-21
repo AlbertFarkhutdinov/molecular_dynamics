@@ -1,14 +1,14 @@
 import numpy as np
 
-from constants import TEMPERATURE_MINIMUM
-from dynamic_parameters import SystemDynamicParameters
-from external_parameters import ExternalParameters
-from helpers import get_empty_float_scalars, get_empty_int_scalars, get_empty_vectors, sign
-from log_config import debug_info, logger_wraps
-from modeling_parameters import ModelingParameters
-from numba_procedures import lf_cycle, update_list_cycle
-from potential_parameters import PotentialParameters
-from static_parameters import SystemStaticParameters
+from scripts.constants import TEMPERATURE_MINIMUM
+from scripts.dynamic_parameters import SystemDynamicParameters
+from scripts.external_parameters import ExternalParameters
+from scripts.helpers import get_empty_float_scalars, get_empty_int_scalars, get_empty_vectors, sign
+from scripts.log_config import debug_info, logger_wraps
+from scripts.modeling_parameters import ModelingParameters
+from scripts.numba_procedures import lf_cycle, update_list_cycle
+from scripts.potential_parameters import PotentialParameters
+from scripts.static_parameters import SystemStaticParameters
 
 
 class Verlet:
