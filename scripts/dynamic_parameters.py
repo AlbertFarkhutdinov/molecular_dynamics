@@ -108,7 +108,6 @@ class SystemDynamicParameters:
             density: float = None,
             cell_volume: float = None,
     ) -> float:
-        # TODO Check pressure calculation (compare 2020-11-21 and the book, p.87)
         _density = density or self.static.get_density()
         _cell_volume = cell_volume or self.static.get_cell_volume()
         return _density * temperature + virial / (3 * _cell_volume)
@@ -164,13 +163,9 @@ class SystemDynamicParameters:
         for i in range(particles_number):
             for j in range(3):
                 if positions[i][j] >= cell_dimensions[j] / 2.0:
-                    # print(i, j, positions[i])
                     positions[i][j] -= cell_dimensions[j]
-                    # print(i, j, positions[i])
                 if positions[i][j] < -cell_dimensions[j] / 2.0:
-                    # print(i, j, positions[i])
                     positions[i][j] += cell_dimensions[j]
-                    # print(i, j, positions[i])
 
     def distance_refold(self):
         for i in range(self.particles_number - 1):

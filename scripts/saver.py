@@ -1,5 +1,6 @@
 from datetime import datetime
-from os.path import join
+from os import mkdir
+from os.path import exists, join
 
 import numpy as np
 from pandas import DataFrame
@@ -7,7 +8,7 @@ from pandas import DataFrame
 from scripts.constants import PATH_TO_DATA
 from scripts.dynamic_parameters import SystemDynamicParameters
 from scripts.modeling_parameters import ModelingParameters
-from scripts.helpers import get_empty_vectors, get_formatted_time
+from scripts.helpers import get_empty_vectors, get_formatted_time, get_date
 from scripts.static_parameters import SystemStaticParameters
 
 
@@ -30,10 +31,16 @@ class Saver:
         self.lammps_configurations = lammps_configurations or []
         self.configuration_storing_step = configuration_storing_step
         self.configuration_saving_step = configuration_saving_step
+        self.date_folder = join(
+            PATH_TO_DATA,
+            get_date(),
+        )
+        if not exists(self.date_folder):
+            mkdir(self.date_folder)
 
     def save_configuration(self, file_name: str = None):
         file_name = join(
-            PATH_TO_DATA,
+            self.date_folder,
             file_name or f'system_config_{get_formatted_time()}.txt'
         )
         with open(file_name, mode='w', encoding='utf-8') as file:
@@ -128,7 +135,7 @@ class Saver:
     ):
         _start = datetime.now()
         file_name = join(
-            PATH_TO_DATA,
+            self.date_folder,
             file_name or f'system_config.txt'
         )
         is_saved = False
@@ -147,15 +154,18 @@ class Saver:
             )
             self.lammps_configurations = []
 
-    @staticmethod
     def save_dict(
+            self,
             data: dict,
             default_file_name: str,
             data_name: str,
             file_name: str = None,
     ):
         _start = datetime.now()
-        _file_name = join(PATH_TO_DATA, file_name or default_file_name)
+        _file_name = join(
+            self.date_folder,
+            file_name or default_file_name,
+        )
         DataFrame(data).to_csv(
             _file_name,
             sep=';',

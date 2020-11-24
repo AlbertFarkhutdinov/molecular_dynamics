@@ -14,7 +14,7 @@ pressure = epsilon / (sigma ^ 3) = 4.2E7 pascal = 4.2E2 atmospheres
 
 
 from copy import deepcopy
-# from cProfile import run
+from cProfile import run
 from json import load
 from math import pi
 from datetime import datetime
@@ -43,6 +43,7 @@ class MolecularDynamics:
             self,
             config_filename: Optional[str] = None,
             is_initially_frozen: bool = True,
+            is_rdf_calculated: bool = True,
     ):
         _config_filename = join(
             PATH_TO_CONFIG,
@@ -72,6 +73,7 @@ class MolecularDynamics:
             **config_parameters['saver_parameters'],
         )
         self.rdf_parameters = config_parameters['rdf_parameters']
+        self.is_rdf_calculated = is_rdf_calculated
 
     def md_time_step(
             self,
@@ -84,6 +86,7 @@ class MolecularDynamics:
             stage_id=1,
             thermostat_type='velocity_scaling',
         )
+        self.dynamic.boundary_conditions()
         potential_energy, virial = self.verlet.load_forces(
             potential_table=potential_table,
         )
@@ -124,8 +127,9 @@ class MolecularDynamics:
             'total_energy': get_empty_float_scalars(self.model.iterations_numbers),
         }
         for step in range(1, self.model.iterations_numbers + 1):
-            if step in (1, 1000) or step % self.rdf_parameters['rdf_saving_step'] == 0:
-                self.run_rdf()
+            if self.is_rdf_calculated:
+                if step in (1, 1000) or step % self.rdf_parameters['rdf_saving_step'] == 0:
+                    self.run_rdf()
             self.model.time += self.model.time_step
             debug_info(f'Step: {step}; Time: {self.model.time:.3f};')
             self.md_time_step(
@@ -240,10 +244,12 @@ class MolecularDynamics:
 def main(
         config_filename: str = None,
         is_initially_frozen: bool = True,
+        is_rdf_calculated: bool = True,
 ):
     MolecularDynamics(
         config_filename=config_filename,
         is_initially_frozen=is_initially_frozen,
+        is_rdf_calculated=is_rdf_calculated
     ).run_md()
 
 
@@ -257,6 +263,7 @@ if __name__ == '__main__':
     #     dtype=np.float,
     # )
     #
+    #
     # def f(x):
     #     for _ in range(x):
     #         get_interparticle_distances(
@@ -264,7 +271,7 @@ if __name__ == '__main__':
     #             positions=md_sample.dynamic.positions,
     #             cell_dimensions=md_sample.static.cell_dimensions,
     #         )
-    #
+
     # f(1)
     # run('f(1)')
 
@@ -273,6 +280,9 @@ if __name__ == '__main__':
     #     sort=2,
     # )
     main(
-        config_filename='book_chapter_4_stage_1.json',
+        # config_filename='book_chapter_4_stage_1.json',
+        # TODO check pressure at T = 2.8
+        config_filename='equilibrium_2.8.json',
         is_initially_frozen=False,
+        is_rdf_calculated=False,
     )
