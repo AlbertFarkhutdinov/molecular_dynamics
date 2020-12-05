@@ -98,6 +98,70 @@ class Verlet:
         debug_info(f'Temperature after velocity_scaling_2: {self.dynamic.temperature()};')
         return pressure, total_energy
 
+    # @logger_wraps()
+    # def nose_hoover_1(self):
+    #     self.dynamic.get_next_positions(
+    #         time_step=self.model.time_step,
+    #         acc_coefficient=(lmbd + xi),
+    #     )
+    #     system_kinetic_energy = self.dynamic.system_kinetic_energy
+    #     temperature = self.dynamic.temperature(
+    #         system_kinetic_energy=system_kinetic_energy,
+    #     )
+    #
+    #     self.model.initial_temperature += (
+    #             sign(self.external.temperature - self.model.initial_temperature)
+    #             * self.external.heating_velocity
+    #             * self.model.time_step
+    #     )
+    #     if self.model.initial_temperature < TEMPERATURE_MINIMUM:
+    #         self.model.initial_temperature = TEMPERATURE_MINIMUM
+    #     if temperature <= 0:
+    #         temperature = self.model.initial_temperature
+    #
+    #     diff = ((system_kinetic_energy
+    #              - 3.0 * self.static.particles_number * self.model.initial_temperature)
+    #             * self.model.time_step / self.external.thermostat_parameter)
+    #     S_f += lmbd * self.model.time_step + diff * self.model.time_step
+    #     lmbd += diff / 2.0
+    #
+    #     debug_info(f'Kinetic Energy: {system_kinetic_energy};')
+    #     debug_info(f'Temperature before velocity_scaling_1: {temperature};')
+    #     debug_info(f'Initial Temperature: {self.model.initial_temperature};')
+    #     debug_info(f'Lambda: {lmbd};')
+    #     debug_info(f'S_f: {S_f};')
+    #     self.dynamic.get_next_velocities(
+    #         time_step=self.model.time_step,
+    #         acc_coefficient=(lmbd + xi),
+    #     )
+    #     debug_info(f'Temperature after velocity_scaling_1: {self.dynamic.temperature()};')
+    #     return system_kinetic_energy, temperature
+    #
+    # @logger_wraps()
+    # def nose_hoover_2(
+    #         self,
+    #         potential_energy: float,
+    #         system_kinetic_energy: float,
+    #         pressure: float,
+    # ):
+    #     cell_volume = self.static.get_cell_volume()
+    #     density = self.static.get_density()
+    #     pressure = self.dynamic.get_pressure(
+    #         virial=virial,
+    #         temperature=temperature,
+    #         cell_volume=cell_volume,
+    #     )
+    #     xi += (pressure - P_ext) * self.model.time_step / self.external.barostat_parameter / density
+    #     self.static.cell_dimensions *= 1.0 + xi * self.model.time_step
+    #     cell_volume = self.static.get_cell_volume()
+    #     density = self.static.get_density()
+    #     error = 1e-5
+    #     system_kinetic_energy = self.dynamic.system_kinetic_energy
+    #     p_s = lmbd
+    #     ready = False
+    #     iter = 0
+
+
     def load_forces(
             self,
             potential_table: np.ndarray,

@@ -6,10 +6,11 @@ class ExternalParameters:
             heating_velocity: float,
             environment_type: str,
             pressure: float = None,
-            **environment_parameters,
+            **kwargs,
     ):
         self.temperature = temperature
         self.pressure = pressure
         self.heating_velocity = heating_velocity
         if environment_type == 'nose_hoover':
-            self.parameters = environment_parameters
+            self.thermostat_parameter = kwargs.get('thermostat_parameter')
+            self.barostat_parameter = kwargs.get('barostat_parameter')

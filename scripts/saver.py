@@ -41,7 +41,7 @@ class Saver:
     def save_configuration(self, file_name: str = None):
         file_name = join(
             self.date_folder,
-            file_name or f'system_config_{get_formatted_time()}.txt'
+            file_name or f'system_config.txt'
         )
         with open(file_name, mode='w', encoding='utf-8') as file:
             lines = [

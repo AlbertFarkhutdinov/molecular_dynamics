@@ -280,9 +280,9 @@ if __name__ == '__main__':
     #     sort=2,
     # )
     main(
-        # config_filename='book_chapter_4_stage_1.json',
         # TODO check pressure at T = 2.8
-        config_filename='equilibrium_2.8.json',
-        is_initially_frozen=False,
+        config_filename='book_chapter_4_stage_1.json',
+        # config_filename='equilibrium_2.8.json',
+        is_initially_frozen=True,
         is_rdf_calculated=False,
     )
