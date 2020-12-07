@@ -77,7 +77,8 @@ def lf_cycle(
                 potential_energies[i] += potential_ij / 2.0
                 potential_energies[j] += potential_ij / 2.0
                 acceleration_ij = force_ij * radius_vector
-                virial += force_ij * distance * distance
+                virial += force_ij * distance * distance / 2
+                # virial += force_ij * distance * distance
                 accelerations[i] += acceleration_ij
                 accelerations[j] -= acceleration_ij
                 assert table_row >= 1
