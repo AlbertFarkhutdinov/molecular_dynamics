@@ -3,7 +3,7 @@ from os import mkdir
 from os.path import exists, join
 
 import numpy as np
-from pandas import DataFrame
+from pandas import concat, DataFrame
 
 from scripts.constants import PATH_TO_DATA
 from scripts.dynamic_parameters import SystemDynamicParameters
@@ -39,54 +39,62 @@ class Saver:
             mkdir(self.date_folder)
 
     def save_configuration(self, file_name: str = None):
-        file_name = join(
+        _start = datetime.now()
+        _file_name = join(
             self.date_folder,
-            file_name or f'system_config.txt'
+            file_name or 'system_configuration.csv',
         )
-        with open(file_name, mode='w', encoding='utf-8') as file:
-            lines = [
-                '\n'.join(self.static.cell_dimensions.astype(str)),
-                str(self.static.particles_number),
-                str(self.model.time),
-                *[
-                    f'{pos[0]} {pos[1]} {pos[2]}'
-                    for i, pos in enumerate(self.dynamic.positions)
-                ],
-                *[
-                    f'{vel[0]} {vel[1]} {vel[2]}'
-                    for i, vel in enumerate(self.dynamic.velocities)
-                ],
-                *[
-                    f'{acc[0]} {acc[1]} {acc[2]}'
-                    for i, acc in enumerate(self.dynamic.accelerations)
-                ],
-            ]
-            file.write('\n'.join(lines))
+        positions = DataFrame(
+            self.dynamic.positions,
+            columns=['x', 'y', 'z'],
+        )
+        velocities = DataFrame(
+            self.dynamic.velocities,
+            columns=['v_x', 'v_y', 'v_z'],
+        )
+        accelerations = DataFrame(
+            self.dynamic.accelerations,
+            columns=['a_x', 'a_y', 'a_z'],
+        )
+        configuration = concat([positions, velocities, accelerations])
+        configuration[['L_x', 'L_y', 'L_z']] = self.static.cell_dimensions
+        configuration['particles_number'] = self.static.particles_number
+        configuration['time'] = self.model.time
+
+        DataFrame(configuration).to_csv(
+            _file_name,
+            sep=';',
+            index=False,
+        )
+        print(f'System configuration is saved. Time of saving: {datetime.now() - _start}')
 
     def load_saved_configuration(self, file_name: str = None):
-        file_name = join(PATH_TO_DATA, file_name or 'system_config.txt')
-        with open(file_name, mode='r', encoding='utf-8') as file:
-            lines = file.readlines()
-            lines = [line.rstrip() for line in lines]
-            self.static.cell_dimensions = np.array(lines[:3], dtype=np.float)
-            self.static.particles_number = int(lines[3])
-            self.model.time = float(lines[4])
-            self.dynamic.positions = get_empty_vectors(self.static.particles_number)
-            self.dynamic.velocities = get_empty_vectors(self.static.particles_number)
-            self.dynamic.accelerations = get_empty_vectors(self.static.particles_number)
-            for i in range(self.static.particles_number):
-                self.dynamic.positions[i] = np.array(
-                    lines[5 + i].split(),
-                    dtype=np.float,
-                )
-                self.dynamic.velocities[i] = np.array(
-                    lines[5 + i + self.static.particles_number].split(),
-                    dtype=np.float,
-                )
-                self.dynamic.velocities[i] = np.array(
-                    lines[5 + i + 2 * self.static.particles_number].split(),
-                    dtype=np.float,
-                )
+        # TODO reading csv configuration
+
+        pass
+        # file_name = join(PATH_TO_DATA, file_name or 'system_config.txt')
+        # with open(file_name, mode='r', encoding='utf-8') as file:
+        #     lines = file.readlines()
+        #     lines = [line.rstrip() for line in lines]
+        #     self.static.cell_dimensions = np.array(lines[:3], dtype=np.float)
+        #     self.static.particles_number = int(lines[3])
+        #     self.model.time = float(lines[4])
+        #     self.dynamic.positions = get_empty_vectors(self.static.particles_number)
+        #     self.dynamic.velocities = get_empty_vectors(self.static.particles_number)
+        #     self.dynamic.accelerations = get_empty_vectors(self.static.particles_number)
+        #     for i in range(self.static.particles_number):
+        #         self.dynamic.positions[i] = np.array(
+        #             lines[5 + i].split(),
+        #             dtype=np.float,
+        #         )
+        #         self.dynamic.velocities[i] = np.array(
+        #             lines[5 + i + self.static.particles_number].split(),
+        #             dtype=np.float,
+        #         )
+        #         self.dynamic.velocities[i] = np.array(
+        #             lines[5 + i + 2 * self.static.particles_number].split(),
+        #             dtype=np.float,
+        #         )
 
     def update_system_parameters(
             self,

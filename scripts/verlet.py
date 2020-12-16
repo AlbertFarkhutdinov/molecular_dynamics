@@ -26,7 +26,7 @@ class Verlet:
         self.dynamic = dynamic
         self.external = external
         self.model = model
-        self.verlet_lists = {
+        self.neighbours_lists = {
             'marker_1': get_empty_int_scalars(self.static.particles_number),
             'marker_2': get_empty_int_scalars(self.static.particles_number),
             'list': get_empty_int_scalars(100 * self.static.particles_number),
@@ -161,7 +161,6 @@ class Verlet:
     #     ready = False
     #     iter = 0
 
-
     def load_forces(
             self,
             potential_table: np.ndarray,
@@ -177,9 +176,9 @@ class Verlet:
 
         virial = lf_cycle(
             particles_number=self.static.particles_number,
-            verlet_list=self.verlet_lists['list'],
-            marker_1=self.verlet_lists['marker_1'],
-            marker_2=self.verlet_lists['marker_2'],
+            all_neighbours=self.neighbours_lists['all_neighbours'],
+            first_neighbours=self.neighbours_lists['first_neighbours'],
+            last_neighbours=self.neighbours_lists['last_neighbours'],
             r_cut=self.potential.r_cut,
             potential_table=potential_table,
             potential_energies=potential_energies,
@@ -187,7 +186,7 @@ class Verlet:
             accelerations=self.dynamic.accelerations,
             cell_dimensions=self.static.cell_dimensions,
         )
-        acc_mag = (self.dynamic.accelerations ** 2).sum(axis=1) ** 0.2
+        acc_mag = (self.dynamic.accelerations ** 2).sum(axis=1) ** 0.5
         debug_info(f'Mean and max acceleration: {acc_mag.mean()}, {acc_mag.max()}')
         # TODO Check potential calculation (compare 2020-11-21 and the book, p.87)
         potential_energy = potential_energies.sum()
@@ -202,10 +201,10 @@ class Verlet:
 
     @logger_wraps()
     def update_list(self):
-        self.verlet_lists = {
-            'marker_1': get_empty_int_scalars(self.static.particles_number),
-            'marker_2': get_empty_int_scalars(self.static.particles_number),
-            'list': get_empty_int_scalars(100 * self.static.particles_number),
+        self.neighbours_lists = {
+            'first_neighbours': get_empty_int_scalars(self.static.particles_number),
+            'last_neighbours': get_empty_int_scalars(self.static.particles_number),
+            'all_neighbours': get_empty_int_scalars(100 * self.static.particles_number),
         }
         advances = get_empty_int_scalars(self.static.particles_number)
         update_list_cycle(
@@ -214,9 +213,9 @@ class Verlet:
             particles_number=self.static.particles_number,
             positions=self.dynamic.positions,
             cell_dimensions=self.static.cell_dimensions,
-            marker_1=self.verlet_lists['marker_1'],
-            marker_2=self.verlet_lists['marker_2'],
-            verlet_list=self.verlet_lists['list'],
+            all_neighbours=self.neighbours_lists['all_neighbours'],
+            first_neighbours=self.neighbours_lists['first_neighbours'],
+            last_neighbours=self.neighbours_lists['last_neighbours'],
         )
 
     @logger_wraps()

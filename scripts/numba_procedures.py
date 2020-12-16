@@ -41,14 +41,12 @@ def get_interparticle_distances(positions, distances, cell_dimensions):
     return distances
 
 
-# TODO Check virial calculation (compare 2020-11-21 and the book, p.87)
-# J.P.Hansen, I.R.McDonald. Theory Of Simple Liquids (2006), p.30
 @njit
 def lf_cycle(
         particles_number,
-        verlet_list,
-        marker_1,
-        marker_2,
+        all_neighbours,
+        first_neighbours,
+        last_neighbours,
         r_cut,
         potential_table,
         potential_energies,
@@ -59,10 +57,10 @@ def lf_cycle(
     virial = 0
     for i in prange(particles_number - 1):
         for k in prange(
-                marker_1[i],
-                marker_2[i] + 1,
+                first_neighbours[i],
+                last_neighbours[i] + 1,
         ):
-            j = verlet_list[k]
+            j = all_neighbours[k]
             radius_vector, distance = get_radius_vector(
                 index_1=i,
                 index_2=j,
@@ -78,15 +76,9 @@ def lf_cycle(
                 potential_energies[j] += potential_ij / 2.0
                 acceleration_ij = force_ij * radius_vector
                 virial += force_ij * distance * distance / 2
-                # virial += force_ij * distance * distance
                 accelerations[i] += acceleration_ij
                 accelerations[j] -= acceleration_ij
                 assert table_row >= 1
-
-    # TODO
-    # for i in prange(particles_number):
-    #     for x in prange(3):
-    #         virial += accelerations[i][x] * positions[i][x]
 
     return virial
 
@@ -98,9 +90,9 @@ def update_list_cycle(
         particles_number: int,
         positions: np.ndarray,
         cell_dimensions: np.ndarray,
-        marker_1: np.ndarray,
-        marker_2: np.ndarray,
-        verlet_list: np.ndarray,
+        all_neighbours: np.ndarray,
+        first_neighbours: np.ndarray,
+        last_neighbours: np.ndarray,
 ):
     k = 1
     for i in prange(particles_number - 1):
@@ -111,14 +103,13 @@ def update_list_cycle(
                 positions=positions,
                 cell_dimensions=cell_dimensions
             )
-            # distance_squared = (radius_vector ** 2).sum()
             if distance < rng:
                 advances[j] = 1
             else:
                 advances[j] = 0
 
-        marker_1[i] = k
+        first_neighbours[i] = k
         for j in range(i + 1, particles_number):
-            verlet_list[k] = j
+            all_neighbours[k] = j
             k = k + advances[j]
-        marker_2[i] = k - 1
+        last_neighbours[i] = k - 1
