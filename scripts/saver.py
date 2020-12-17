@@ -2,13 +2,12 @@ from datetime import datetime
 from os import mkdir
 from os.path import exists, join
 
-import numpy as np
-from pandas import concat, DataFrame
+import pandas as pd
 
 from scripts.constants import PATH_TO_DATA
 from scripts.dynamic_parameters import SystemDynamicParameters
 from scripts.modeling_parameters import ModelingParameters
-from scripts.helpers import get_empty_vectors, get_formatted_time, get_date
+from scripts.helpers import get_formatted_time, get_date
 from scripts.static_parameters import SystemStaticParameters
 
 
@@ -44,57 +43,29 @@ class Saver:
             self.date_folder,
             file_name or 'system_configuration.csv',
         )
-        positions = DataFrame(
+        positions = pd.DataFrame(
             self.dynamic.positions,
             columns=['x', 'y', 'z'],
         )
-        velocities = DataFrame(
+        velocities = pd.DataFrame(
             self.dynamic.velocities,
             columns=['v_x', 'v_y', 'v_z'],
         )
-        accelerations = DataFrame(
+        accelerations = pd.DataFrame(
             self.dynamic.accelerations,
             columns=['a_x', 'a_y', 'a_z'],
         )
-        configuration = concat([positions, velocities, accelerations])
+        configuration = pd.concat([positions, velocities, accelerations], axis=1)
         configuration[['L_x', 'L_y', 'L_z']] = self.static.cell_dimensions
         configuration['particles_number'] = self.static.particles_number
         configuration['time'] = self.model.time
 
-        DataFrame(configuration).to_csv(
+        configuration.to_csv(
             _file_name,
             sep=';',
             index=False,
         )
         print(f'System configuration is saved. Time of saving: {datetime.now() - _start}')
-
-    def load_saved_configuration(self, file_name: str = None):
-        # TODO reading csv configuration
-
-        pass
-        # file_name = join(PATH_TO_DATA, file_name or 'system_config.txt')
-        # with open(file_name, mode='r', encoding='utf-8') as file:
-        #     lines = file.readlines()
-        #     lines = [line.rstrip() for line in lines]
-        #     self.static.cell_dimensions = np.array(lines[:3], dtype=np.float)
-        #     self.static.particles_number = int(lines[3])
-        #     self.model.time = float(lines[4])
-        #     self.dynamic.positions = get_empty_vectors(self.static.particles_number)
-        #     self.dynamic.velocities = get_empty_vectors(self.static.particles_number)
-        #     self.dynamic.accelerations = get_empty_vectors(self.static.particles_number)
-        #     for i in range(self.static.particles_number):
-        #         self.dynamic.positions[i] = np.array(
-        #             lines[5 + i].split(),
-        #             dtype=np.float,
-        #         )
-        #         self.dynamic.velocities[i] = np.array(
-        #             lines[5 + i + self.static.particles_number].split(),
-        #             dtype=np.float,
-        #         )
-        #         self.dynamic.velocities[i] = np.array(
-        #             lines[5 + i + 2 * self.static.particles_number].split(),
-        #             dtype=np.float,
-        #         )
 
     def update_system_parameters(
             self,
@@ -103,12 +74,13 @@ class Saver:
             temperature: float,
             pressure: float,
             system_kinetic_energy: float,
+            total_energy: float,
     ):
         system_parameters['temperature'][self.step - 1] = temperature
         system_parameters['pressure'][self.step - 1] = pressure
         system_parameters['kinetic_energy'][self.step - 1] = system_kinetic_energy
         system_parameters['potential_energy'][self.step - 1] = potential_energy
-        system_parameters['total_energy'][self.step - 1] = system_kinetic_energy + potential_energy
+        system_parameters['total_energy'][self.step - 1] = total_energy
 
     def get_lammps_trajectory(self):
         lines = [
@@ -174,7 +146,7 @@ class Saver:
             self.date_folder,
             file_name or default_file_name,
         )
-        DataFrame(data).to_csv(
+        pd.DataFrame(data).to_csv(
             _file_name,
             sep=';',
             index=False,

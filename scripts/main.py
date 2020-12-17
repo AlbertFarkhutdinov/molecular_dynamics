@@ -14,7 +14,7 @@ pressure = epsilon / (sigma ^ 3) = 4.2E7 pascal = 4.2E2 atmospheres
 
 
 from copy import deepcopy
-from cProfile import run
+# from cProfile import run
 from json import load
 from math import pi
 from datetime import datetime
@@ -23,8 +23,9 @@ from time import time
 from typing import Optional
 
 import numpy as np
+import pandas as pd
 
-from scripts.constants import PATH_TO_CONFIG
+from scripts.constants import PATH_TO_CONFIG, PATH_TO_DATA
 from scripts.dynamic_parameters import SystemDynamicParameters
 from scripts.external_parameters import ExternalParameters
 from scripts.helpers import get_empty_float_scalars, get_empty_int_scalars
@@ -52,17 +53,31 @@ class MolecularDynamics:
         with open(_config_filename, encoding='utf8') as file:
             config_parameters = load(file)
 
-        self.static = SystemStaticParameters(**config_parameters['static_parameters'])
         self.model = ModelingParameters(**config_parameters['modeling_parameters'])
-        self.dynamic = SystemDynamicParameters(
-            static=self.static,
-            temperature=self.model.initial_temperature if not is_initially_frozen else None,
-        )
+        if 'file_name' in config_parameters['static_parameters']:
+            _file_name = join(
+                PATH_TO_DATA,
+                config_parameters['static_parameters']['file_name'],
+            )
+            configuration = pd.read_csv(_file_name, sep=';')
+            self.dynamic.positions = configuration[['x', 'y', 'z']].to_numpy()
+            self.dynamic.velocities = configuration[['v_x', 'v_y', 'v_z']].to_numpy()
+            self.dynamic.accelerations = configuration[['a_x', 'a_y', 'a_z']].to_numpy()
+            self.static.cell_dimensions = configuration.loc[0, ['L_x', 'L_y', 'L_z']].to_numpy()
+            self.static.particles_number = configuration.loc[0, 'particles_number']
+            self.model.time = configuration.loc[0, 'time']
+        else:
+            self.static = SystemStaticParameters(**config_parameters['static_parameters'])
+            self.dynamic = SystemDynamicParameters(
+                static=self.static,
+                temperature=self.model.initial_temperature if not is_initially_frozen else None,
+            )
         self.potential = PotentialParameters(**config_parameters['potential_parameters'])
+        external = ExternalParameters(**config_parameters['external_parameters'])
         self.verlet = Verlet(
             static=self.static,
             dynamic=self.dynamic,
-            external=ExternalParameters(**config_parameters['external_parameters']),
+            external=external,
             model=self.model,
             potential=self.potential,
         )
@@ -74,6 +89,7 @@ class MolecularDynamics:
         )
         self.rdf_parameters = config_parameters['rdf_parameters']
         self.is_rdf_calculated = is_rdf_calculated
+        self.environment_type = external.environment_type
 
     def md_time_step(
             self,
@@ -84,33 +100,31 @@ class MolecularDynamics:
     ):
         system_kinetic_energy, temperature = self.verlet.system_dynamics(
             stage_id=1,
-            thermostat_type='velocity_scaling',
+            thermostat_type=self.environment_type,
         )
         self.dynamic.boundary_conditions()
         potential_energy, virial = self.verlet.load_forces(
             potential_table=potential_table,
         )
-        pressure = self.dynamic.get_pressure(
-            temperature=temperature,
-            virial=virial,
-        )
         parameters = {
             'system_kinetic_energy': system_kinetic_energy,
+            'temperature': temperature,
             'potential_energy': potential_energy,
-            'pressure': pressure,
         }
-        self.verlet.system_dynamics(
+        pressure, total_energy = self.verlet.system_dynamics(
             stage_id=2,
-            thermostat_type='velocity_scaling',
+            thermostat_type=self.environment_type,
+            virial=virial,
             **parameters,
         )
+        parameters['pressure'] = pressure
+        parameters['total_energy'] = total_energy
         if not is_rdf_calculation and system_parameters is not None:
             self.saver.dynamic = self.dynamic
             self.saver.step = step
             self.saver.model.time = self.model.time
             self.saver.update_system_parameters(
                 system_parameters=system_parameters,
-                temperature=temperature,
                 **parameters
             )
             self.saver.store_configuration()
@@ -153,6 +167,7 @@ class MolecularDynamics:
         self.saver.save_system_parameters(
             system_parameters=system_parameters,
         )
+        self.saver.save_configuration()
 
     def run_rdf(
             self,
@@ -281,8 +296,9 @@ if __name__ == '__main__':
     # )
     main(
         # TODO check potential at T = 2.8
-        # config_filename='book_chapter_4_stage_1.json',
-        config_filename='equilibrium_2.8.json',
+        config_filename='book_chapter_4_stage_2.json',
+        # config_filename='equilibrium_2.8.json',
         is_initially_frozen=False,
-        is_rdf_calculated=False,
+        is_rdf_calculated=True,
+        # is_rdf_calculated=False,
     )
