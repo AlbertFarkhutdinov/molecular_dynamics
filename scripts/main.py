@@ -113,13 +113,15 @@ class MolecularDynamics:
             'system_kinetic_energy': system_kinetic_energy,
             'temperature': temperature,
             'potential_energy': potential_energy,
+            'virial': virial,
         }
         pressure, total_energy = self.verlet.system_dynamics(
             stage_id=2,
             environment_type=self.environment_type,
-            virial=virial,
             **parameters,
         )
+        parameters['system_kinetic_energy'] = self.dynamic.system_kinetic_energy
+        parameters['temperature'] = self.dynamic.temperature(system_kinetic_energy=parameters['system_kinetic_energy'])
         parameters['pressure'] = pressure
         parameters['total_energy'] = total_energy
         if not is_rdf_calculation and system_parameters is not None:
@@ -132,6 +134,7 @@ class MolecularDynamics:
             )
             self.saver.store_configuration()
             self.saver.save_configurations()
+        return virial
 
     @logger_wraps()
     def run_md(self):
@@ -142,11 +145,9 @@ class MolecularDynamics:
             'kinetic_energy': get_empty_float_scalars(self.model.iterations_numbers),
             'potential_energy': get_empty_float_scalars(self.model.iterations_numbers),
             'total_energy': get_empty_float_scalars(self.model.iterations_numbers),
+            'virial': get_empty_float_scalars(self.model.iterations_numbers),
         }
         for step in range(1, self.model.iterations_numbers + 1):
-            if self.is_rdf_calculated:
-                if step in (1, 1000) or step % self.rdf_parameters['rdf_saving_step'] == 0:
-                    self.run_rdf()
             self.model.time += self.model.time_step
             debug_info(f'Step: {step}; Time: {self.model.time:.3f};')
             self.md_time_step(
@@ -163,6 +164,10 @@ class MolecularDynamics:
             )
             debug_info(f'End of step {step}.\n')
 
+            if self.is_rdf_calculated:
+                if step in (1, 1000) or step % self.rdf_parameters['rdf_saving_step'] == 0:
+                    self.run_rdf(virial=system_parameters['virial'][step - 1])
+
         self.saver.save_configurations(
             is_last_step=True,
         )
@@ -174,7 +179,8 @@ class MolecularDynamics:
 
     def run_rdf(
             self,
-            is_positions_from_file: bool = False
+            is_positions_from_file: bool = False,
+            virial: float = None,
             # file_name: str = None,
     ):
         start = time()
@@ -189,7 +195,13 @@ class MolecularDynamics:
             sample.verlet.external.temperature = round(self.dynamic.temperature(), 5)
             if sample.verlet.external.temperature == 0:
                 sample.verlet.external.temperature = sample.model.initial_temperature
+
+            sample.verlet.external.pressure = self.dynamic.get_pressure(
+                virial=virial,
+                temperature=sample.verlet.external.temperature,
+            )
             debug_info(f'External Temperature: {sample.verlet.external.temperature}')
+            debug_info(f'External Pressure: {sample.verlet.external.pressure}')
             for rdf_step in range(1, end_step + 1):
                 message = (
                     f'RDF Step: {rdf_step}/{end_step}, '
@@ -299,7 +311,7 @@ if __name__ == '__main__':
     # )
     main(
         # TODO check potential at T = 2.8
-        config_filename='book_chapter_4_stage_1.json',
+        config_filename='book_chapter_4_stage_2.json',
         # config_filename='equilibrium_2.8.json',
         is_initially_frozen=False,
         is_rdf_calculated=True,

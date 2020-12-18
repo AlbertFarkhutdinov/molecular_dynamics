@@ -147,8 +147,11 @@ class Verlet:
                 * self.model.time_step
                 / self.external.barostat_parameter / density
         )
+        debug_info(f'NPT-factor: {self.npt_factor};')
 
         self.static.cell_dimensions *= 1.0 + self.npt_factor * self.model.time_step
+        debug_info(f'Cell Dimensions: {self.static.cell_dimensions};')
+        debug_info(f'New Pressure: {self.dynamic.get_pressure(virial=virial, temperature=temperature, cell_volume=self.static.get_cell_volume(),)};')
 
         # cell_volume = self.static.get_cell_volume()
         # density = self.static.get_density()
