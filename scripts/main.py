@@ -299,7 +299,7 @@ if __name__ == '__main__':
     # )
     main(
         # TODO check potential at T = 2.8
-        config_filename='book_chapter_4_stage_2.json',
+        config_filename='book_chapter_4_stage_1.json',
         # config_filename='equilibrium_2.8.json',
         is_initially_frozen=False,
         is_rdf_calculated=True,
