@@ -19,9 +19,6 @@ class SystemDynamicParameters:
         self.cell_dimensions = static.cell_dimensions
         self.positions = get_empty_vectors(self.particles_number)
         self.velocities = get_empty_vectors(self.particles_number)
-        self.v = get_empty_vectors(self.particles_number)
-        self.vo = get_empty_vectors(self.particles_number)
-        self.b = get_empty_vectors(self.particles_number)
         self.accelerations = get_empty_vectors(self.particles_number)
         if self.static.init_type == 1:
             self.generate_ordered_state()

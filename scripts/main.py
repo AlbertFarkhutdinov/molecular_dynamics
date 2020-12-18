@@ -54,20 +54,23 @@ class MolecularDynamics:
             config_parameters = load(file)
 
         self.model = ModelingParameters(**config_parameters['modeling_parameters'])
+        self.static = SystemStaticParameters(**config_parameters['static_parameters'])
         if 'file_name' in config_parameters['static_parameters']:
             _file_name = join(
                 PATH_TO_DATA,
                 config_parameters['static_parameters']['file_name'],
             )
             configuration = pd.read_csv(_file_name, sep=';')
+            self.static.cell_dimensions = configuration.loc[0, ['L_x', 'L_y', 'L_z']].to_numpy()
+            self.static.particles_number = configuration.loc[0, 'particles_number']
+            self.dynamic = SystemDynamicParameters(
+                static=self.static,
+            )
             self.dynamic.positions = configuration[['x', 'y', 'z']].to_numpy()
             self.dynamic.velocities = configuration[['v_x', 'v_y', 'v_z']].to_numpy()
             self.dynamic.accelerations = configuration[['a_x', 'a_y', 'a_z']].to_numpy()
-            self.static.cell_dimensions = configuration.loc[0, ['L_x', 'L_y', 'L_z']].to_numpy()
-            self.static.particles_number = configuration.loc[0, 'particles_number']
             self.model.time = configuration.loc[0, 'time']
         else:
-            self.static = SystemStaticParameters(**config_parameters['static_parameters'])
             self.dynamic = SystemDynamicParameters(
                 static=self.static,
                 temperature=self.model.initial_temperature if not is_initially_frozen else None,
@@ -100,7 +103,7 @@ class MolecularDynamics:
     ):
         system_kinetic_energy, temperature = self.verlet.system_dynamics(
             stage_id=1,
-            thermostat_type=self.environment_type,
+            environment_type=self.environment_type,
         )
         self.dynamic.boundary_conditions()
         potential_energy, virial = self.verlet.load_forces(
@@ -113,7 +116,7 @@ class MolecularDynamics:
         }
         pressure, total_energy = self.verlet.system_dynamics(
             stage_id=2,
-            thermostat_type=self.environment_type,
+            environment_type=self.environment_type,
             virial=virial,
             **parameters,
         )

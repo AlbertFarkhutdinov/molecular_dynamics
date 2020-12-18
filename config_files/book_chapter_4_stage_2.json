@@ -1,5 +1,9 @@
 {
   "static_parameters": {
+    "init_type": -1,
+    "lattice_constant": 1.75,
+    "particles_number": 0,
+    "crystal_type": "гцк",
     "file_name": "2020-12-17/system_configuration.csv"
   },
   "external_parameters": {

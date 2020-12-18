@@ -39,15 +39,15 @@ class Verlet:
     def system_dynamics(
             self,
             stage_id: int,
-            thermostat_type: str,
+            environment_type: str,
             **kwargs,
     ):
         if stage_id == 1:
-            return self.stage_1(algorithm_name=thermostat_type)
+            return self.stage_1(algorithm_name=environment_type)
         if stage_id == 2:
-            if thermostat_type == 'velocity_scaling':
+            if environment_type == 'velocity_scaling':
                 return self.velocity_scaling_2(**kwargs)
-            elif thermostat_type == 'nose_hoover':
+            elif environment_type == 'nose_hoover':
                 return self.nose_hoover_2(**kwargs)
 
     @logger_wraps()
@@ -116,7 +116,6 @@ class Verlet:
         temperature = self.dynamic.temperature(
             system_kinetic_energy=system_kinetic_energy,
         )
-        debug_info(f'Pressure: {pressure};')
         debug_info(f'Temperature before velocity_scaling_2: {temperature};')
         self.dynamic.get_next_velocities(
             time_step=self.model.time_step,
@@ -140,7 +139,9 @@ class Verlet:
             temperature=temperature,
             cell_volume=cell_volume,
         )
-        # TODO is it mistake?
+        debug_info(f'Temperature before nose_hoover_2: {temperature};')
+        debug_info(f'Pressure before nose_hoover_2: {pressure};')
+        # TODO incorrect algorithm
         self.npt_factor += (
                 (pressure - self.external.pressure)
                 * self.model.time_step
@@ -152,7 +153,6 @@ class Verlet:
         # cell_volume = self.static.get_cell_volume()
         # density = self.static.get_density()
 
-        # TODO understanding of code below
         error = 1e-5
         half_time = self.model.time_step / 2.0
         time_ratio = self.model.time_step / self.external.thermostat_parameter
@@ -194,6 +194,16 @@ class Verlet:
                 + self.nvt_factor * self.nvt_factor * self.external.thermostat_parameter / 2.0
                 + 3.0 * self.static.particles_number * self.model.initial_temperature * self.s_f
         )
+
+        cell_volume = self.static.get_cell_volume()
+        temperature = self.dynamic.temperature()
+        pressure = self.dynamic.get_pressure(
+            virial=virial,
+            temperature=temperature,
+            cell_volume=cell_volume,
+        )
+        debug_info(f'Temperature after nose_hoover_2: {temperature};')
+        debug_info(f'Pressure after nose_hoover_2: {pressure};')
         return pressure, total_energy
 
     def load_forces(
