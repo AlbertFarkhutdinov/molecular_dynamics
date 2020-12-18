@@ -70,19 +70,10 @@ class Saver:
     def update_system_parameters(
             self,
             system_parameters: dict,
-            potential_energy: float,
-            temperature: float,
-            pressure: float,
-            system_kinetic_energy: float,
-            total_energy: float,
-            virial: float,
+            parameters: dict,
     ):
-        system_parameters['temperature'][self.step - 1] = temperature
-        system_parameters['pressure'][self.step - 1] = pressure
-        system_parameters['kinetic_energy'][self.step - 1] = system_kinetic_energy
-        system_parameters['potential_energy'][self.step - 1] = potential_energy
-        system_parameters['total_energy'][self.step - 1] = total_energy
-        system_parameters['virial'][self.step - 1] = virial
+        for key, value in parameters.items():
+            system_parameters[key][self.step - 1] = value
 
     def get_lammps_trajectory(self):
         lines = [

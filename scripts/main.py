@@ -45,6 +45,7 @@ class MolecularDynamics:
             config_filename: Optional[str] = None,
             is_initially_frozen: bool = True,
             is_rdf_calculated: bool = True,
+            is_msd_calculated: bool = True,
     ):
         _config_filename = join(
             PATH_TO_CONFIG,
@@ -92,6 +93,7 @@ class MolecularDynamics:
         )
         self.rdf_parameters = config_parameters['rdf_parameters']
         self.is_rdf_calculated = is_rdf_calculated
+        self.is_msd_calculated = is_msd_calculated
         self.environment_type = external.environment_type
 
     def md_time_step(
@@ -100,12 +102,16 @@ class MolecularDynamics:
             step: int,
             system_parameters: dict = None,
             is_rdf_calculation: bool = False,
+            is_pbc_switched_on: bool = False,
     ):
+        # TODO check if old_positions changes with positions
+        self.dynamic.old_positions = self.dynamic.positions
         system_kinetic_energy, temperature = self.verlet.system_dynamics(
             stage_id=1,
             environment_type=self.environment_type,
         )
-        self.dynamic.boundary_conditions()
+        if is_pbc_switched_on:
+            self.dynamic.boundary_conditions()
         potential_energy, virial = self.verlet.load_forces(
             potential_table=potential_table,
         )
@@ -126,12 +132,17 @@ class MolecularDynamics:
         parameters['pressure'] = pressure
         parameters['total_energy'] = total_energy
         if not is_rdf_calculation and system_parameters is not None:
+            mean_square_displacement = (
+                    ((self.dynamic.positions - self.dynamic.old_positions) ** 2).sum() / self.static.particles_number
+            )
+            parameters['mean_square_displacement'] = mean_square_displacement
+
             self.saver.dynamic = self.dynamic
             self.saver.step = step
             self.saver.model.time = self.model.time
             self.saver.update_system_parameters(
                 system_parameters=system_parameters,
-                **parameters
+                parameters=parameters
             )
             self.saver.store_configuration()
             self.saver.save_configurations()
@@ -143,10 +154,11 @@ class MolecularDynamics:
         system_parameters = {
             'temperature': get_empty_float_scalars(self.model.iterations_numbers),
             'pressure': get_empty_float_scalars(self.model.iterations_numbers),
-            'kinetic_energy': get_empty_float_scalars(self.model.iterations_numbers),
+            'system_kinetic_energy': get_empty_float_scalars(self.model.iterations_numbers),
             'potential_energy': get_empty_float_scalars(self.model.iterations_numbers),
             'total_energy': get_empty_float_scalars(self.model.iterations_numbers),
             'virial': get_empty_float_scalars(self.model.iterations_numbers),
+            'mean_square_displacement': get_empty_float_scalars(self.model.iterations_numbers),
         }
         for step in range(1, self.model.iterations_numbers + 1):
             self.model.time += self.model.time_step
@@ -312,8 +324,8 @@ if __name__ == '__main__':
     # )
     main(
         # TODO check potential at T = 2.8
-        config_filename='book_chapter_4_stage_2.json',
-        # config_filename='equilibrium_2.8.json',
+        # config_filename='book_chapter_4_stage_2.json',
+        config_filename='cooling.json',
         is_initially_frozen=False,
         is_rdf_calculated=True,
         # is_rdf_calculated=False,

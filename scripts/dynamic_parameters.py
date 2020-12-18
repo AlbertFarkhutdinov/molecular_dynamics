@@ -18,6 +18,7 @@ class SystemDynamicParameters:
         self.particles_number = static.particles_number
         self.cell_dimensions = static.cell_dimensions
         self.positions = get_empty_vectors(self.particles_number)
+        self.old_positions = get_empty_vectors(self.particles_number)
         self.velocities = get_empty_vectors(self.particles_number)
         self.accelerations = get_empty_vectors(self.particles_number)
         if self.static.init_type == 1:
@@ -65,6 +66,7 @@ class SystemDynamicParameters:
 
     @logger_wraps()
     def generate_random_state(self) -> None:
+        # TODO raises AssertionError
         np.random.seed(0)
         self.positions[0] = np.random.random(3) * self.static.cell_dimensions
         for j in range(1, self.static.particles_number):

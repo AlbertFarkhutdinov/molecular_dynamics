@@ -105,16 +105,15 @@ class Verlet:
     def velocity_scaling_2(
             self,
             virial: float,
-            temperature: float,
             potential_energy: float,
             system_kinetic_energy: float,
     ):
+        temperature = self.dynamic.temperature(
+            system_kinetic_energy=system_kinetic_energy,
+        )
         pressure = self.dynamic.get_pressure(
             temperature=temperature,
             virial=virial,
-        )
-        temperature = self.dynamic.temperature(
-            system_kinetic_energy=system_kinetic_energy,
         )
         debug_info(f'Temperature before velocity_scaling_2: {temperature};')
         self.dynamic.get_next_velocities(
