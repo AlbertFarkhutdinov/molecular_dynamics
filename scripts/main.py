@@ -111,7 +111,6 @@ class MolecularDynamics:
         )
         parameters = {
             'system_kinetic_energy': system_kinetic_energy,
-            'temperature': temperature,
             'potential_energy': potential_energy,
             'virial': virial,
         }
@@ -121,7 +120,9 @@ class MolecularDynamics:
             **parameters,
         )
         parameters['system_kinetic_energy'] = self.dynamic.system_kinetic_energy
-        parameters['temperature'] = self.dynamic.temperature(system_kinetic_energy=parameters['system_kinetic_energy'])
+        parameters['temperature'] = self.dynamic.temperature(
+            system_kinetic_energy=parameters['system_kinetic_energy']
+        )
         parameters['pressure'] = pressure
         parameters['total_energy'] = total_energy
         if not is_rdf_calculation and system_parameters is not None:

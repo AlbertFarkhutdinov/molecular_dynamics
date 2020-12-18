@@ -128,10 +128,12 @@ class Verlet:
     def nose_hoover_2(
             self,
             virial: float,
-            temperature: float,
             potential_energy: float,
             system_kinetic_energy: float,
     ):
+        temperature = self.dynamic.temperature(
+            system_kinetic_energy=system_kinetic_energy,
+        )
         cell_volume = self.static.get_cell_volume()
         density = self.static.get_density()
         pressure = self.dynamic.get_pressure(
@@ -139,23 +141,31 @@ class Verlet:
             temperature=temperature,
             cell_volume=cell_volume,
         )
+        debug_info(f'Cell Volume before nose_hoover_2: {cell_volume};')
+        debug_info(f'Density before nose_hoover_2: {density};')
         debug_info(f'Temperature before nose_hoover_2: {temperature};')
         debug_info(f'Pressure before nose_hoover_2: {pressure};')
-        # TODO incorrect algorithm
         self.npt_factor += (
                 (pressure - self.external.pressure)
                 * self.model.time_step
                 / self.external.barostat_parameter / density
         )
         debug_info(f'NPT-factor: {self.npt_factor};')
-
         self.static.cell_dimensions *= 1.0 + self.npt_factor * self.model.time_step
-        debug_info(f'Cell Dimensions: {self.static.cell_dimensions};')
-        debug_info(f'New Pressure: {self.dynamic.get_pressure(virial=virial, temperature=temperature, cell_volume=self.static.get_cell_volume(),)};')
 
-        # cell_volume = self.static.get_cell_volume()
-        # density = self.static.get_density()
+        cell_volume = self.static.get_cell_volume()
+        density = self.static.get_density()
+        pressure = self.dynamic.get_pressure(
+            virial=virial,
+            temperature=temperature,
+            cell_volume=cell_volume,
+        )
+        debug_info(f'New cell dimensions: {self.static.cell_dimensions};')
+        debug_info(f'New cell volume: {cell_volume};')
+        debug_info(f'New density: {density};')
+        debug_info(f'Pressure at new volume: {pressure};')
 
+        # TODO incorrect algorithm
         error = 1e-5
         half_time = self.model.time_step / 2.0
         time_ratio = self.model.time_step / self.external.thermostat_parameter
@@ -164,6 +174,7 @@ class Verlet:
         velocities_new = self.dynamic.velocities
         is_ready = False
         for i in range(50):
+            debug_info(f'i: {i}')
             if is_ready:
                 break
             nvt_factor_old = nvt_factor_new
@@ -171,23 +182,24 @@ class Verlet:
             velocities_old = velocities_new
             b = (
                     -half_time
-                    * (self.dynamic.accelerations - nvt_factor_old * self.dynamic.velocities)
+                    * (self.dynamic.accelerations - nvt_factor_old * velocities_new)
                     - (self.dynamic.velocities - velocities_old)
             )
             ds += (velocities_old * b).sum() * time_ratio
             dd = 1 - nvt_factor_old * half_time
             ds -= dd * (
                     (3.0 * self.static.particles_number * self.model.initial_temperature - 2.0 * system_kinetic_energy)
-                    * 2.0 * time_ratio
+                    * time_ratio / 2.0
                     - (self.nvt_factor - nvt_factor_old)
             )
             ds = ds / (-self.model.time_step * system_kinetic_energy * time_ratio + dd)
-            velocities_new = self.dynamic.velocities + (b + half_time * velocities_old * ds) / dd
+            velocities_new += (b + half_time * velocities_old * ds) / dd
             system_kinetic_energy = (velocities_new * velocities_new).sum() / 2.0
             nvt_factor_new = nvt_factor_old + ds
-            is_ready = not (
-                    (abs((velocities_new - velocities_old) / velocities_new) > error).any()
-                    or (abs((nvt_factor_new - nvt_factor_old) / nvt_factor_new) > error).any()
+
+            is_ready = (
+                    (abs((velocities_new - velocities_old) / velocities_new) <= error).all()
+                    and (abs((nvt_factor_new - nvt_factor_old) / nvt_factor_new) <= error).all()
             )
 
         self.dynamic.velocities = velocities_new
