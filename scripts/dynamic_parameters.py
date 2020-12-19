@@ -19,6 +19,7 @@ class SystemDynamicParameters:
         self.cell_dimensions = static.cell_dimensions
         self.positions = get_empty_vectors(self.particles_number)
         self.old_positions = get_empty_vectors(self.particles_number)
+        self.first_positions = get_empty_vectors(self.particles_number)
         self.velocities = get_empty_vectors(self.particles_number)
         self.accelerations = get_empty_vectors(self.particles_number)
         if self.static.init_type == 1:
@@ -190,3 +191,7 @@ class SystemDynamicParameters:
         radius_vector = self.positions[index_1] - self.positions[index_2]
         radius_vector -= (radius_vector / self.cell_dimensions).astype(numba.int32) * self.cell_dimensions
         return (radius_vector ** 2).sum()
+
+    def get_msd(self, previous_positions):
+        return ((self.positions - previous_positions) ** 2).sum() / self.particles_number
+

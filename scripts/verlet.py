@@ -115,6 +115,7 @@ class Verlet:
             temperature=temperature,
             virial=virial,
         )
+        debug_info(f'Pressure before velocity_scaling_2: {pressure};')
         debug_info(f'Temperature before velocity_scaling_2: {temperature};')
         self.dynamic.get_next_velocities(
             time_step=self.model.time_step,
@@ -247,7 +248,6 @@ class Verlet:
         )
         acc_mag = (self.dynamic.accelerations ** 2).sum(axis=1) ** 0.5
         debug_info(f'Mean and max acceleration: {acc_mag.mean()}, {acc_mag.max()}')
-        # TODO Check potential calculation (compare 2020-11-21 and the book, p.87)
         potential_energy = potential_energies.sum()
         self.dynamic.displacements += (
                 self.dynamic.velocities * self.model.time_step

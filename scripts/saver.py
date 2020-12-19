@@ -165,7 +165,7 @@ class Saver:
     ):
         self.save_dict(
             data=rdf_data,
-            default_file_name=f'rdf_file_{get_formatted_time()}.csv',
+            default_file_name=f'rdf_{get_formatted_time()}.csv',
             data_name='RDF values',
             file_name=file_name,
         )

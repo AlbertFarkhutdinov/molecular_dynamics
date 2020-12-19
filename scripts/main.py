@@ -104,8 +104,7 @@ class MolecularDynamics:
             is_rdf_calculation: bool = False,
             is_pbc_switched_on: bool = False,
     ):
-        # TODO check if old_positions changes with positions
-        self.dynamic.old_positions = self.dynamic.positions
+        self.dynamic.old_positions = deepcopy(self.dynamic.positions)
         system_kinetic_energy, temperature = self.verlet.system_dynamics(
             stage_id=1,
             environment_type=self.environment_type,
@@ -131,22 +130,47 @@ class MolecularDynamics:
         )
         parameters['pressure'] = pressure
         parameters['total_energy'] = total_energy
+        debug_info(f'Kinetic Energy after system_dynamics_2: {self.dynamic.system_kinetic_energy}')
+        debug_info(f'Temperature after system_dynamics_2: {parameters["temperature"]}')
+        debug_info(f'Pressure after system_dynamics_2: {pressure}')
+        debug_info(f'Potential energy after system_dynamics_2: {potential_energy}')
+        debug_info(f'Total energy after system_dynamics_2: {total_energy}')
+        debug_info(f'Virial after system_dynamics_2: {virial}')
         if not is_rdf_calculation and system_parameters is not None:
-            mean_square_displacement = (
-                    ((self.dynamic.positions - self.dynamic.old_positions) ** 2).sum() / self.static.particles_number
+            msd = self.dynamic.get_msd(
+                previous_positions=self.dynamic.first_positions,
             )
-            parameters['mean_square_displacement'] = mean_square_displacement
+            diffusion = msd / 6 / self.model.time_step / step
+            parameters['msd'] = msd
+            parameters['diffusion'] = diffusion
+            debug_info(f'MSD after system_dynamics_2: {msd}')
+            debug_info(f'Diffusion after system_dynamics_2: {diffusion}')
 
             self.saver.dynamic = self.dynamic
             self.saver.step = step
             self.saver.model.time = self.model.time
             self.saver.update_system_parameters(
                 system_parameters=system_parameters,
-                parameters=parameters
+                parameters=parameters,
             )
             self.saver.store_configuration()
             self.saver.save_configurations()
         return virial
+
+    def reduce_transition_processes(self):
+        print('Reducing Transition Processes.')
+        debug_info('Reducing Transition Processes.')
+        external_temperature = self.verlet.external.temperature
+        self.verlet.external.temperature = round(self.dynamic.temperature(), 5)
+        if self.verlet.external.temperature == 0:
+            self.verlet.external.temperature = self.model.initial_temperature
+        for _ in range(50):
+            self.md_time_step(
+                potential_table=self.potential.potential_table,
+                step=1,
+                is_rdf_calculation=True,
+            )
+        self.verlet.external.temperature = external_temperature
 
     @logger_wraps()
     def run_md(self):
@@ -158,8 +182,13 @@ class MolecularDynamics:
             'potential_energy': get_empty_float_scalars(self.model.iterations_numbers),
             'total_energy': get_empty_float_scalars(self.model.iterations_numbers),
             'virial': get_empty_float_scalars(self.model.iterations_numbers),
-            'mean_square_displacement': get_empty_float_scalars(self.model.iterations_numbers),
+            'msd': get_empty_float_scalars(self.model.iterations_numbers),
+            'diffusion': get_empty_float_scalars(self.model.iterations_numbers),
         }
+
+        self.reduce_transition_processes()
+        self.dynamic.first_positions = deepcopy(self.dynamic.positions)
+
         for step in range(1, self.model.iterations_numbers + 1):
             self.model.time += self.model.time_step
             debug_info(f'Step: {step}; Time: {self.model.time:.3f};')
@@ -204,6 +233,10 @@ class MolecularDynamics:
         rdf = get_empty_float_scalars(20 * sample.static.particles_number)
         print(f'********RDF calculation for T = {sample.dynamic.temperature():.5f}********')
 
+        isotherm_system_parameters = {
+            'msd': get_empty_float_scalars(end_step),
+            'diffusion': get_empty_float_scalars(end_step),
+        }
         if not is_positions_from_file:
             sample.verlet.external.temperature = round(self.dynamic.temperature(), 5)
             if sample.verlet.external.temperature == 0:
@@ -215,6 +248,7 @@ class MolecularDynamics:
             )
             debug_info(f'External Temperature: {sample.verlet.external.temperature}')
             debug_info(f'External Pressure: {sample.verlet.external.pressure}')
+            sample.dynamic.first_positions = deepcopy(sample.dynamic.positions)
             for rdf_step in range(1, end_step + 1):
                 message = (
                     f'RDF Step: {rdf_step}/{end_step}, '
@@ -258,18 +292,25 @@ class MolecularDynamics:
                     step=rdf_step,
                     is_rdf_calculation=True,
                 )
+                msd = sample.dynamic.get_msd(
+                    previous_positions=sample.dynamic.first_positions,
+                )
+                diffusion = msd / 6 / sample.model.time_step / rdf_step
+                isotherm_parameters = {
+                    'msd': msd,
+                    'diffusion': diffusion,
+                }
+                debug_info(f'MSD: {msd}')
+                debug_info(f'Diffusion: {diffusion}')
+                sample.saver.step = rdf_step
+                sample.saver.update_system_parameters(
+                    system_parameters=isotherm_system_parameters,
+                    parameters=isotherm_parameters,
+                )
+
         else:
             pass
             # TODO implementation of reading from file
-            # positions = get_empty_vectors(self.static.particles_number)
-            # file_name = join(PATH_TO_DATA, file_name or 'system_config.txt')
-            # with open(file_name, mode='r', encoding='utf8') as file:
-            #     lines = file.readlines()
-            #     for i in range(self.static.particles_number):
-            #         positions[i] = np.array(
-            #             lines[9 + i].split()[2:],
-            #             dtype=np.float,
-            #         )
 
         rdf = rdf[:np.nonzero(rdf)[0][-1]] / (end_step - begin_step + 1)
         debug_info(f'rdf.shape: {rdf.shape}')
@@ -279,7 +320,13 @@ class MolecularDynamics:
                 'radius': radiuses[radiuses <= sample.static.cell_dimensions[0] / 2.0],
                 'rdf': rdf[radiuses <= sample.static.cell_dimensions[0] / 2.0],
             },
-            file_name=f'rdf_file_T_{sample.verlet.external.temperature:.5f}.csv'
+            file_name=f'rdf_T_{sample.verlet.external.temperature:.5f}.csv'
+        )
+        Saver().save_dict(
+            data=isotherm_system_parameters,
+            default_file_name=f'transport.csv',
+            data_name='MSD and self-diffusion coefficient',
+            file_name=f'transport_T_{sample.verlet.external.temperature:.5f}.csv'
         )
         print(f'Calculation completed. Time of calculation: {time() - start} seconds.')
 
@@ -323,10 +370,12 @@ if __name__ == '__main__':
     #     sort=2,
     # )
     main(
-        # TODO check potential at T = 2.8
+        # TODO check potential at T = 2.8 (compare 2020-12-17 and the book, p.87)
+        config_filename='book_chapter_4_stage_1.json',
         # config_filename='book_chapter_4_stage_2.json',
-        config_filename='cooling.json',
-        is_initially_frozen=False,
+        # config_filename='cooling.json',
+        # config_filename='equilibrium_2.8.json',
+        is_initially_frozen=True,
+        # is_rdf_calculated=True,
         is_rdf_calculated=True,
-        # is_rdf_calculated=False,
     )
