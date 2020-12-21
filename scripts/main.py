@@ -28,7 +28,7 @@ import pandas as pd
 from scripts.constants import PATH_TO_CONFIG, PATH_TO_DATA
 from scripts.dynamic_parameters import SystemDynamicParameters
 from scripts.external_parameters import ExternalParameters
-from scripts.helpers import get_empty_float_scalars, get_empty_int_scalars
+from scripts.helpers import get_empty_float_scalars
 from scripts.log_config import debug_info, logger_wraps
 from scripts.modeling_parameters import ModelingParameters
 from scripts.numba_procedures import get_interparticle_distances
@@ -221,106 +221,82 @@ class MolecularDynamics:
 
     def run_rdf(
             self,
-            is_positions_from_file: bool = False,
             virial: float = None,
-            # file_name: str = None,
+            layer_thickness: float = 0.01,
     ):
         start = time()
-        layer_thickness = 0.01
         begin_step = self.rdf_parameters['equilibration_steps'] + 1
         end_step = begin_step - 1 + self.rdf_parameters['calculation_steps']
         sample = deepcopy(self)
         rdf = get_empty_float_scalars(20 * sample.static.particles_number)
         print(f'********RDF calculation for T = {sample.dynamic.temperature():.5f}********')
-
         isotherm_system_parameters = {
             'msd': get_empty_float_scalars(end_step),
             'diffusion': get_empty_float_scalars(end_step),
         }
-        if not is_positions_from_file:
-            sample.verlet.external.temperature = round(self.dynamic.temperature(), 5)
-            if sample.verlet.external.temperature == 0:
-                sample.verlet.external.temperature = sample.model.initial_temperature
-
-            sample.verlet.external.pressure = self.dynamic.get_pressure(
-                virial=virial,
-                temperature=sample.verlet.external.temperature,
+        sample.verlet.external.temperature = round(self.dynamic.temperature(), 5)
+        if sample.verlet.external.temperature == 0:
+            sample.verlet.external.temperature = sample.model.initial_temperature
+        sample.verlet.external.pressure = self.dynamic.get_pressure(
+            virial=virial,
+            temperature=sample.verlet.external.temperature,
+        )
+        debug_info(f'External Temperature: {sample.verlet.external.temperature}')
+        debug_info(f'External Pressure: {sample.verlet.external.pressure}')
+        sample.dynamic.first_positions = deepcopy(sample.dynamic.positions)
+        for rdf_step in range(1, end_step + 1):
+            message = (
+                f'RDF Step: {rdf_step}/{end_step}, '
+                f'Temperature = {sample.dynamic.temperature():.5f} epsilon/k_B'
             )
-            debug_info(f'External Temperature: {sample.verlet.external.temperature}')
-            debug_info(f'External Pressure: {sample.verlet.external.pressure}')
-            sample.dynamic.first_positions = deepcopy(sample.dynamic.positions)
-            for rdf_step in range(1, end_step + 1):
-                message = (
-                    f'RDF Step: {rdf_step}/{end_step}, '
-                    f'Temperature = {sample.dynamic.temperature():.5f} epsilon/k_B'
+            if rdf_step == begin_step:
+                print(f'********RDF Calculation started********')
+            debug_info(message)
+            print(message)
+            if rdf_step >= begin_step:
+                distances = get_interparticle_distances(
+                    distances=np.zeros(
+                        (sample.static.particles_number, sample.static.particles_number),
+                        dtype=np.float,
+                    ),
+                    positions=sample.dynamic.positions,
+                    cell_dimensions=sample.static.cell_dimensions,
                 )
-                if rdf_step == begin_step:
-                    print(f'********RDF Calculation started********')
-                debug_info(message)
-                print(message)
-                if rdf_step >= begin_step:
-                    distances = get_interparticle_distances(
-                        distances=np.zeros(
-                            (sample.static.particles_number, sample.static.particles_number),
-                            dtype=np.float,
-                        ),
-                        positions=sample.dynamic.positions,
-                        cell_dimensions=sample.static.cell_dimensions,
-                    )
-                    hist = np.histogram(
-                        distances.flatten(),
-                        np.arange(0, distances.max() + 1, layer_thickness)
-                    )
-
-
-                    debug_info(f'maximum distance: {distances.max()}')
-                    layer_numbers = (distances / layer_thickness).astype(np.int)
-                    max_layer_number = layer_numbers.max()
-                    debug_info(f'max_layer_number: {max_layer_number}')
-                    particles_in_layer = get_empty_int_scalars(max_layer_number + 1)
-                    layers, particles = np.unique(layer_numbers, return_counts=True)
-                    debug_info(f'layers.shape: {layers.shape}')
-                    debug_info(f'particles.shape: {particles.shape}')
-                    for i, layer in enumerate(layers):
-                        particles_in_layer[layer] = particles[i]
-                    debug_info(f'particles_in_layer.shape: {particles_in_layer.shape}')
-                    radiuses = layer_thickness * (0.5 + np.arange(max_layer_number + 1))
-                    debug_info(f'radiuses.shape: {radiuses.shape}')
-                    debug_info(f'rdf.shape: {rdf.shape}')
-                    rdf[:max_layer_number + 1] += (
-                            2.0 * sample.static.get_cell_volume()
-                            / (4.0 * pi * radiuses * radiuses
-                               * sample.static.particles_number * sample.static.particles_number)
-                            * particles_in_layer / layer_thickness
-                    )
-                sample.md_time_step(
-                    potential_table=sample.potential.potential_table,
-                    step=rdf_step,
-                    is_rdf_calculation=True,
-                )
-                msd = sample.dynamic.get_msd(
-                    previous_positions=sample.dynamic.first_positions,
-                )
-                diffusion = msd / 6 / sample.model.time_step / rdf_step
-                isotherm_parameters = {
-                    'msd': msd,
-                    'diffusion': diffusion,
-                }
-                debug_info(f'MSD: {msd}')
-                debug_info(f'Diffusion: {diffusion}')
-                sample.saver.step = rdf_step
-                sample.saver.update_system_parameters(
-                    system_parameters=isotherm_system_parameters,
-                    parameters=isotherm_parameters,
+                bins = np.arange(layer_thickness, distances.max() + 1, layer_thickness)
+                hist = np.histogram(
+                    distances.flatten(),
+                    bins
+                )[0]
+                rdf[:hist.size] += (
+                        2.0 * sample.static.get_cell_volume()
+                        / (4.0 * pi * bins[:hist.size] ** 2
+                           * sample.static.particles_number * sample.static.particles_number)
+                        * hist / layer_thickness
                 )
 
-        else:
-            pass
-            # TODO implementation of reading from file
+            sample.md_time_step(
+                potential_table=sample.potential.potential_table,
+                step=rdf_step,
+                is_rdf_calculation=True,
+            )
+            msd = sample.dynamic.get_msd(
+                previous_positions=sample.dynamic.first_positions,
+            )
+            diffusion = msd / 6 / sample.model.time_step / rdf_step
+            isotherm_parameters = {
+                'msd': msd,
+                'diffusion': diffusion,
+            }
+            debug_info(f'MSD: {msd}')
+            debug_info(f'Diffusion: {diffusion}')
+            sample.saver.step = rdf_step
+            sample.saver.update_system_parameters(
+                system_parameters=isotherm_system_parameters,
+                parameters=isotherm_parameters,
+            )
 
         rdf = rdf[:np.nonzero(rdf)[0][-1]] / (end_step - begin_step + 1)
-        debug_info(f'rdf.shape: {rdf.shape}')
-        radiuses = layer_thickness * (0.5 + np.arange(rdf.size))
+        radiuses = layer_thickness * np.arange(1, rdf.size + 1)
         Saver().save_rdf(
             rdf_data={
                 'radius': radiuses[radiuses <= sample.static.cell_dimensions[0] / 2.0],
@@ -379,8 +355,9 @@ if __name__ == '__main__':
         # TODO check potential at T = 2.8 (compare 2020-12-17 and the book, p.87)
         # config_filename='book_chapter_4_stage_1.json',
         # config_filename='book_chapter_4_stage_2.json',
-        config_filename='cooling.json',
-        # config_filename='equilibrium_2.8.json',
+        # config_filename='cooling.json',
+        config_filename='equilibrium_2.8.json',
+        # config_filename='equilibrium_0.01.json',
         is_initially_frozen=False,
         is_rdf_calculated=True,
     )

@@ -1,0 +1,35 @@
+{
+  "static_parameters": {
+    "init_type": 1,
+    "lattice_constant": 1.75,
+    "particles_number": [7, 7, 7],
+    "crystal_type": "гцк"
+  },
+  "external_parameters": {
+    "environment_type": "velocity_scaling",
+    "heating_velocity": 0.02,
+    "temperature": 1e-10
+  },
+  "modeling_parameters": {
+    "iterations_numbers": 40000,
+    "time_step": 0.005,
+    "initial_temperature": 2.8
+  },
+  "potential_parameters": {
+    "potential_type": "lennard_jones",
+    "skin": 0.3
+  },
+  "saver_parameters": {
+    "configuration_storing_step": 20,
+    "configuration_saving_step": 1000
+  },
+  "rdf_parameters": {
+    "rdf_saving_step": 5000,
+    "equilibration_steps": 500,
+    "calculation_steps": 1000
+  }
+}
+
+is_initially_frozen = False
+
+boundary_conditions: Off
