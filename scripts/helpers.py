@@ -1,4 +1,5 @@
 from datetime import datetime
+from typing import Dict, Iterable
 
 import numpy as np
 
@@ -29,3 +30,25 @@ def get_formatted_time():
 
 def get_date():
     return datetime.today().strftime("%Y-%m-%d")
+
+
+def get_parameters_dict(names: Iterable, value_size: int):
+    return {
+        name: get_empty_float_scalars(value_size)
+        for name in names
+    }
+
+
+def print_info(
+        step: int,
+        iterations_numbers: int,
+        current_time: float,
+        parameters: Dict[str, Iterable],
+):
+    print(
+        f'Step: {step}/{iterations_numbers};',
+        f'\tTime = {current_time:.3f};',
+        f'\tT = {parameters["temperature"][step - 1]:.5f};',
+        f'\tP = {parameters["pressure"][step - 1]:.5f};\n',
+        sep='\n',
+    )

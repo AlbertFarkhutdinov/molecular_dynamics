@@ -4,7 +4,7 @@ from scripts.constants import TEMPERATURE_MINIMUM
 from scripts.dynamic_parameters import SystemDynamicParameters
 from scripts.external_parameters import ExternalParameters
 from scripts.helpers import get_empty_float_scalars, get_empty_int_scalars, get_empty_vectors, sign
-from scripts.log_config import debug_info, logger_wraps
+from scripts.log_config import log_debug_info, logger_wraps
 from scripts.modeling_parameters import ModelingParameters
 from scripts.numba_procedures import lf_cycle, update_list_cycle
 from scripts.potential_parameters import PotentialParameters
@@ -86,10 +86,10 @@ class Verlet:
             self.s_f += self.nvt_factor * self.model.time_step + lambda_diff * self.model.time_step
             self.nvt_factor += lambda_diff / 2.0
 
-        debug_info(f'Kinetic Energy: {system_kinetic_energy};')
-        debug_info(f'Temperature before {algorithm_name}_1: {temperature};')
-        debug_info(f'Initial Temperature: {self.model.initial_temperature};')
-        debug_info(f'NVT-factor: {self.nvt_factor};')
+        log_debug_info(f'Kinetic Energy: {system_kinetic_energy};')
+        log_debug_info(f'Temperature before {algorithm_name}_1: {temperature};')
+        log_debug_info(f'Initial Temperature: {self.model.initial_temperature};')
+        log_debug_info(f'NVT-factor: {self.nvt_factor};')
 
         vel_coefficient = 1
         if algorithm_name == 'velocity_scaling':
@@ -98,7 +98,7 @@ class Verlet:
             time_step=self.model.time_step,
             vel_coefficient=vel_coefficient,
         )
-        debug_info(f'Temperature after {algorithm_name}_1: {self.dynamic.temperature()};')
+        log_debug_info(f'Temperature after {algorithm_name}_1: {self.dynamic.temperature()};')
         return system_kinetic_energy, temperature
 
     @logger_wraps()
@@ -115,13 +115,13 @@ class Verlet:
             temperature=temperature,
             virial=virial,
         )
-        debug_info(f'Pressure before velocity_scaling_2: {pressure};')
-        debug_info(f'Temperature before velocity_scaling_2: {temperature};')
+        log_debug_info(f'Pressure before velocity_scaling_2: {pressure};')
+        log_debug_info(f'Temperature before velocity_scaling_2: {temperature};')
         self.dynamic.get_next_velocities(
             time_step=self.model.time_step,
         )
         total_energy = system_kinetic_energy + potential_energy
-        debug_info(f'Temperature after velocity_scaling_2: {self.dynamic.temperature()};')
+        log_debug_info(f'Temperature after velocity_scaling_2: {self.dynamic.temperature()};')
         return pressure, total_energy
 
     @logger_wraps()
@@ -141,16 +141,16 @@ class Verlet:
             temperature=temperature,
             cell_volume=cell_volume,
         )
-        debug_info(f'Cell Volume before nose_hoover_2: {cell_volume};')
-        debug_info(f'Density before nose_hoover_2: {density};')
-        debug_info(f'Temperature before nose_hoover_2: {temperature};')
-        debug_info(f'Pressure before nose_hoover_2: {pressure};')
+        log_debug_info(f'Cell Volume before nose_hoover_2: {cell_volume};')
+        log_debug_info(f'Density before nose_hoover_2: {density};')
+        log_debug_info(f'Temperature before nose_hoover_2: {temperature};')
+        log_debug_info(f'Pressure before nose_hoover_2: {pressure};')
         self.npt_factor += (
                 (pressure - self.external.pressure)
                 * self.model.time_step
                 / self.external.barostat_parameter / density
         )
-        debug_info(f'NPT-factor: {self.npt_factor};')
+        log_debug_info(f'NPT-factor: {self.npt_factor};')
         self.static.cell_dimensions *= 1.0 + self.npt_factor * self.model.time_step
 
         cell_volume = self.static.get_cell_volume()
@@ -160,10 +160,10 @@ class Verlet:
             temperature=temperature,
             cell_volume=cell_volume,
         )
-        debug_info(f'New cell dimensions: {self.static.cell_dimensions};')
-        debug_info(f'New cell volume: {cell_volume};')
-        debug_info(f'New density: {density};')
-        debug_info(f'Pressure at new volume: {pressure};')
+        log_debug_info(f'New cell dimensions: {self.static.cell_dimensions};')
+        log_debug_info(f'New cell volume: {cell_volume};')
+        log_debug_info(f'New density: {density};')
+        log_debug_info(f'Pressure at new volume: {pressure};')
 
         # TODO incorrect algorithm
         error = 1e-5
@@ -174,7 +174,7 @@ class Verlet:
         velocities_new = self.dynamic.velocities
         is_ready = False
         for i in range(50):
-            debug_info(f'i: {i}')
+            log_debug_info(f'i: {i}')
             if is_ready:
                 break
             nvt_factor_old = nvt_factor_new
@@ -217,19 +217,19 @@ class Verlet:
             temperature=temperature,
             cell_volume=cell_volume,
         )
-        debug_info(f'Temperature after nose_hoover_2: {temperature};')
-        debug_info(f'Pressure after nose_hoover_2: {pressure};')
+        log_debug_info(f'Temperature after nose_hoover_2: {temperature};')
+        log_debug_info(f'Pressure after nose_hoover_2: {pressure};')
         return pressure, total_energy
 
     def load_forces(
             self,
             potential_table: np.ndarray,
     ):
-        debug_info(f"Entering 'load_forces(potential_table)'")
+        log_debug_info(f"Entering 'load_forces(potential_table)'")
         potential_energies = get_empty_float_scalars(self.static.particles_number)
         self.dynamic.accelerations = get_empty_vectors(self.static.particles_number)
         if self.potential.update_test:
-            debug_info(f'update_test = True')
+            log_debug_info(f'update_test = True')
             self.update_list()
             self.dynamic.displacements = get_empty_vectors(self.static.particles_number)
             self.potential.update_test = False
@@ -247,15 +247,15 @@ class Verlet:
             cell_dimensions=self.static.cell_dimensions,
         )
         acc_mag = (self.dynamic.accelerations ** 2).sum(axis=1) ** 0.5
-        debug_info(f'Mean and max acceleration: {acc_mag.mean()}, {acc_mag.max()}')
+        log_debug_info(f'Mean and max acceleration: {acc_mag.mean()}, {acc_mag.max()}')
         potential_energy = potential_energies.sum()
         self.dynamic.displacements += (
                 self.dynamic.velocities * self.model.time_step
                 + self.dynamic.accelerations * self.model.time_step * self.model.time_step / 2.0
         )
         self.load_move_test()
-        debug_info(f'Potential energy: {potential_energy};')
-        debug_info(f"Exiting 'load_forces(potential_table)'")
+        log_debug_info(f'Potential energy: {potential_energy};')
+        log_debug_info(f"Exiting 'load_forces(potential_table)'")
         return potential_energy, virial
 
     @logger_wraps()

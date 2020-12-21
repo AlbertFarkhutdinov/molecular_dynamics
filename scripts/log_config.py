@@ -43,7 +43,7 @@ def logger_wraps(*, is_entry=True, is_exit=True, level="DEBUG"):
     return wrapper
 
 
-def debug_info(*args, **kwargs):
+def log_debug_info(*args, **kwargs):
     if IS_LOGGED:
         logger.opt(lazy=True).debug(*args, **kwargs)
 

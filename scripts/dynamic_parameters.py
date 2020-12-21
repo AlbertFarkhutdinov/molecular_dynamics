@@ -18,8 +18,8 @@ class SystemDynamicParameters:
         self.particles_number = static.particles_number
         self.cell_dimensions = static.cell_dimensions
         self.positions = get_empty_vectors(self.particles_number)
-        self.old_positions = get_empty_vectors(self.particles_number)
         self.first_positions = get_empty_vectors(self.particles_number)
+        self.first_velocities = get_empty_vectors(self.particles_number)
         self.velocities = get_empty_vectors(self.particles_number)
         self.accelerations = get_empty_vectors(self.particles_number)
         if self.static.init_type == 1:
