@@ -267,6 +267,12 @@ class MolecularDynamics:
                         positions=sample.dynamic.positions,
                         cell_dimensions=sample.static.cell_dimensions,
                     )
+                    hist = np.histogram(
+                        distances.flatten(),
+                        np.arange(0, distances.max() + 1, layer_thickness)
+                    )
+
+
                     debug_info(f'maximum distance: {distances.max()}')
                     layer_numbers = (distances / layer_thickness).astype(np.int)
                     max_layer_number = layer_numbers.max()
@@ -371,11 +377,10 @@ if __name__ == '__main__':
     # )
     main(
         # TODO check potential at T = 2.8 (compare 2020-12-17 and the book, p.87)
-        config_filename='book_chapter_4_stage_1.json',
+        # config_filename='book_chapter_4_stage_1.json',
         # config_filename='book_chapter_4_stage_2.json',
-        # config_filename='cooling.json',
+        config_filename='cooling.json',
         # config_filename='equilibrium_2.8.json',
-        is_initially_frozen=True,
-        # is_rdf_calculated=True,
+        is_initially_frozen=False,
         is_rdf_calculated=True,
     )
