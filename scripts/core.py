@@ -16,7 +16,7 @@ from scripts.external_parameters import ExternalParameters
 from scripts.helpers import get_empty_float_scalars, get_parameters_dict, print_info
 from scripts.log_config import log_debug_info, logger_wraps
 from scripts.modeling_parameters import ModelingParameters
-from scripts.numba_procedures import get_interparticle_distances
+from scripts.numba_procedures import get_interparticle_distances, get_time_displacements
 from scripts.potential_parameters import PotentialParameters
 from scripts.saver import Saver
 from scripts.static_parameters import SystemStaticParameters
@@ -166,6 +166,30 @@ class MolecularDynamics:
             )
         self.verlet.external.temperature = external_temperature
 
+    def fix_external_conditions(self, virial: float = None):
+        print(f'********Isotherm for T = {self.dynamic.temperature():.5f}********')
+        self.fix_current_temperature()
+        self.verlet.external.pressure = self.dynamic.get_pressure(
+            virial=virial,
+            temperature=self.verlet.external.temperature,
+        )
+        log_debug_info(f'External Temperature: {self.verlet.external.temperature}')
+        log_debug_info(f'External Pressure: {self.verlet.external.pressure}')
+
+    def equilibrate_system(self, equilibration_steps: int):
+        for eq_step in range(equilibration_steps):
+            message = (
+                f'Equilibration Step: {eq_step}/{equilibration_steps}, '
+                f'Temperature = {self.dynamic.temperature():.5f} epsilon/k_B'
+            )
+            log_debug_info(message)
+            print(message)
+            self.md_time_step(
+                potential_table=self.potential.potential_table,
+                step=1,
+                is_rdf_calculation=True,
+            )
+
     def run_isotherm(
             self,
             virial: float = None,
@@ -173,26 +197,13 @@ class MolecularDynamics:
     ):
         start = time()
         sample = deepcopy(self)
-        print(f'********Isotherm for T = {sample.dynamic.temperature():.5f}********')
-        sample.fix_current_temperature()
-        sample.verlet.external.pressure = sample.dynamic.get_pressure(
+        sample.fix_external_conditions(
             virial=virial,
-            temperature=sample.verlet.external.temperature,
         )
-        log_debug_info(f'External Temperature: {sample.verlet.external.temperature}')
-        log_debug_info(f'External Pressure: {sample.verlet.external.pressure}')
-        for eq_step in range(sample.isotherm_parameters['equilibration_steps']):
-            message = (
-                f'Equilibration Step: {eq_step}/{sample.isotherm_parameters["equilibration_steps"]}, '
-                f'Temperature = {sample.dynamic.temperature():.5f} epsilon/k_B'
-            )
-            log_debug_info(message)
-            print(message)
-            sample.md_time_step(
-                potential_table=sample.potential.potential_table,
-                step=1,
-                is_rdf_calculation=True,
-            )
+        sample.equilibrate_system(
+            equilibration_steps=sample.isotherm_parameters['equilibration_steps'],
+        )
+
         ensembles_number = sample.isotherm_parameters['ensembles_number']
         steps_number = 2 * ensembles_number - 1
         isotherm_system_parameters = get_parameters_dict(
@@ -206,28 +217,34 @@ class MolecularDynamics:
             value_size=steps_number,
         )
 
-        first_positions = {}
-        first_velocities = {}
+        first_positions, first_velocities = {}, {}
         rdf = get_empty_float_scalars(20 * sample.static.particles_number)
+        # van_hove = np.array([
+        #     get_empty_float_scalars(20 * sample.static.particles_number) for _ in range(ensembles_number)
+        # ])
         green_kubo_diffusion = 0
+
         print(f'********RDF Calculation started********')
         for rdf_step in range(1, steps_number + 1):
-            first_positions[rdf_step] = deepcopy(sample.dynamic.positions)
-            first_velocities[rdf_step] = deepcopy(sample.dynamic.positions)
             message = (
                 f'RDF Step: {rdf_step}/{steps_number}, '
                 f'Temperature = {sample.dynamic.temperature():.5f} epsilon/k_B'
             )
             log_debug_info(message)
             print(message)
+
             sample.md_time_step(
                 potential_table=sample.potential.potential_table,
                 step=rdf_step,
                 is_rdf_calculation=True,
             )
-            first_step = 0
+
+            first_step = rdf_step - ensembles_number
             if rdf_step <= ensembles_number:
-                distances = get_interparticle_distances(
+                first_step = 0
+                first_positions[rdf_step] = deepcopy(sample.dynamic.positions)
+                first_velocities[rdf_step] = deepcopy(sample.dynamic.velocities)
+                static_distances = get_interparticle_distances(
                     distances=np.zeros(
                         (sample.static.particles_number, sample.static.particles_number),
                         dtype=np.float,
@@ -235,9 +252,9 @@ class MolecularDynamics:
                     positions=sample.dynamic.positions,
                     cell_dimensions=sample.static.cell_dimensions,
                 )
-                radiuses = np.arange(layer_thickness, distances.max() + 1, layer_thickness)
+                radiuses = np.arange(layer_thickness, static_distances.max() + 1, layer_thickness)
                 rdf_hist = np.histogram(
-                    distances.flatten(),
+                    static_distances.flatten(),
                     radiuses
                 )[0]
                 rdf[:rdf_hist.size] += (
@@ -246,9 +263,7 @@ class MolecularDynamics:
                            * sample.static.particles_number * sample.static.particles_number)
                         * rdf_hist / layer_thickness
                 )
-                isotherm_system_parameters['time'][:rdf_step] = sample.model.time_step * rdf_step
-            else:
-                first_step = rdf_step - ensembles_number
+                isotherm_system_parameters['time'][rdf_step - 1] = sample.model.time_step * rdf_step
 
             for i in range(first_step, rdf_step):
                 isotherm_system_parameters['msd'][i] += sample.dynamic.get_msd(
@@ -258,25 +273,44 @@ class MolecularDynamics:
                     (first_velocities[rdf_step - i] * sample.dynamic.velocities).sum()
                     / sample.static.particles_number
                 )
+                # dynamic_distances = get_time_displacements(
+                #     positions_1=sample.dynamic.positions,
+                #     positions_2=first_positions[rdf_step - i],
+                #     distances=np.zeros(
+                #         (sample.static.particles_number, sample.static.particles_number),
+                #         dtype=np.float,
+                #     ),
+                # )
+                # radiuses = np.arange(layer_thickness, dynamic_distances.max() + 1, layer_thickness)
+                # van_hove_hist = np.histogram(
+                #     dynamic_distances.flatten(),
+                #     radiuses
+                # )[0]
+                # van_hove[i][:van_hove_hist.size] += (
+                #         sample.static.get_cell_volume()
+                #         / (2.0 * pi * radiuses[:van_hove_hist.size] ** 2
+                #            * sample.static.particles_number * sample.static.particles_number)
+                #         * van_hove_hist / layer_thickness
+                # )
 
-        isotherm_system_parameters['time'] = np.arange(1, ensembles_number + 1) * sample.model.time_step
-        isotherm_system_parameters['msd'] = isotherm_system_parameters['msd'][:ensembles_number]
+        for key, value in isotherm_system_parameters.items():
+            isotherm_system_parameters[key] = value[:ensembles_number]
+
+        isotherm_system_parameters['msd'] = isotherm_system_parameters['msd'] / ensembles_number
         isotherm_system_parameters[
             'velocity_autocorrelation'
-        ] = isotherm_system_parameters['velocity_autocorrelation'][:ensembles_number]
+        ] = isotherm_system_parameters['velocity_autocorrelation'] / ensembles_number
+
         isotherm_system_parameters[
             'einstein_diffusion'
         ] = isotherm_system_parameters['msd'] / 6 / isotherm_system_parameters['time']
 
-        # TODO Green-Kubo
         for i in range(ensembles_number):
             green_kubo_diffusion += isotherm_system_parameters[
                                         'velocity_autocorrelation'
                                     ][i] * sample.model.time_step / 3
             isotherm_system_parameters['green_kubo_diffusion'][i] += green_kubo_diffusion
-        isotherm_system_parameters[
-            'green_kubo_diffusion'
-        ] = isotherm_system_parameters['green_kubo_diffusion'][:ensembles_number]
+
         rdf = rdf[:np.nonzero(rdf)[0][-1]] / ensembles_number
         radiuses = layer_thickness * np.arange(1, rdf.size + 1)
         Saver().save_rdf(

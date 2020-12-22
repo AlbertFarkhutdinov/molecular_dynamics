@@ -42,6 +42,19 @@ def get_interparticle_distances(positions, distances, cell_dimensions):
 
 
 @njit
+def get_time_displacements(positions_1, positions_2, distances):
+    for i in prange(len(distances[0]) - 1):
+        for j in prange(i + 1, len(distances[0])):
+            distance = 0
+            radius_vector = positions_1[i] - positions_2[j]
+            for k in prange(3):
+                distance += radius_vector[k] * radius_vector[k]
+
+            distances[i, j] = distance ** 0.5
+    return distances
+
+
+@njit
 def lf_cycle(
         particles_number,
         all_neighbours,
