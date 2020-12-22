@@ -194,4 +194,3 @@ class SystemDynamicParameters:
 
     def get_msd(self, previous_positions):
         return ((self.positions - previous_positions) ** 2).sum() / self.particles_number
-

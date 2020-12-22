@@ -23,9 +23,9 @@
     "configuration_storing_step": 20,
     "configuration_saving_step": 1000
   },
-  "rdf_parameters": {
-    "rdf_saving_step": 5000,
+  "isotherm_parameters": {
+    "isotherm_saving_step": 5000,
     "equilibration_steps": 500,
-    "calculation_steps": 1000
+    "ensembles_number": 1000
   }
 }
