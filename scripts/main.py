@@ -34,10 +34,11 @@ if __name__ == '__main__':
     # TODO check potential at T = 2.8 (compare 2020-12-17 and the book, p.87)
     set_printoptions(threshold=5000)
 
-    CONFIG_FILE_NAME = 'book_chapter_4_stage_1.json'
+    # CONFIG_FILE_NAME = 'book_chapter_4_stage_1.json'
+    # CONFIG_FILE_NAME = 'slow_cooling.json'
     # CONFIG_FILE_NAME = 'book_chapter_4_stage_2.json'
     # CONFIG_FILE_NAME = 'cooling.json'
-    # CONFIG_FILE_NAME = 'equilibrium_2.8.json'
+    CONFIG_FILE_NAME = 'equilibrium_2.8.json'
     # CONFIG_FILE_NAME = 'equilibrium_0.01.json'
 
     main(

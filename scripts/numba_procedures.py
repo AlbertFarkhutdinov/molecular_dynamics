@@ -3,12 +3,22 @@ import numpy as np
 
 
 @njit
+def math_round(value):
+    rest = value - int(value)
+    if rest >= 0.5 and value >= 0:
+        return float(int(value) + 1)
+    elif rest <= -0.5 and value < 0:
+        return float(int(value) - 1)
+    return float(int(value))
+
+
+@njit
 def get_radius_vector(index_1, index_2, positions, cell_dimensions):
     radius_vector = positions[index_1] - positions[index_2]
     distance_squared = 0
     for k in prange(3):
         if radius_vector[k] < -cell_dimensions[k] / 2 or radius_vector[k] >= cell_dimensions[k] / 2:
-            radius_vector[k] -= round(radius_vector[k] / cell_dimensions[k] + 1e-15) * cell_dimensions[k]
+            radius_vector[k] -= math_round(radius_vector[k] / cell_dimensions[k]) * cell_dimensions[k]
         distance_squared += radius_vector[k] * radius_vector[k]
 
     assert (
@@ -24,19 +34,12 @@ def get_radius_vector(index_1, index_2, positions, cell_dimensions):
 def get_interparticle_distances(positions, distances, cell_dimensions):
     for i in prange(len(distances[0]) - 1):
         for j in prange(i + 1, len(distances[0])):
-            # _, distances[i, j] = get_radius_vector(i, j, positions, cell_dimensions)
             distance = 0
             radius_vector = positions[i] - positions[j]
             for k in prange(3):
                 if radius_vector[k] < -cell_dimensions[k] / 2 or radius_vector[k] >= cell_dimensions[k] / 2:
-                    radius_vector[k] -= round(radius_vector[k] / cell_dimensions[k] + 1e-5) * cell_dimensions[k]
+                    radius_vector[k] -= math_round(radius_vector[k] / cell_dimensions[k]) * cell_dimensions[k]
                 distance += radius_vector[k] * radius_vector[k]
-
-            # assert (
-            #         -(cell_dimensions[0] / 2) <= radius_vector[0] < (cell_dimensions[0] / 2)
-            #         or -(cell_dimensions[1] / 2) <= radius_vector[1] < (cell_dimensions[1] / 2)
-            #         or -(cell_dimensions[2] / 2) <= radius_vector[2] < (cell_dimensions[2] / 2)
-            # )
             distances[i, j] = distance ** 0.5
     return distances
 
@@ -82,7 +85,7 @@ def lf_cycle(
             )
             if distance < r_cut:
                 # table_row = int((distance - 0.5) / 0.0001)
-                table_row = round((distance - 0.5 + 1e-15) / 0.0001)
+                table_row = int(math_round((distance - 0.5) / 0.0001))
                 potential_ij = potential_table[table_row - 1, 0]
                 force_ij = potential_table[table_row - 1, 1]
                 potential_energies[i] += potential_ij / 2.0
