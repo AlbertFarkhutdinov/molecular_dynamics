@@ -252,6 +252,9 @@ class MolecularDynamics:
                     positions=sample.dynamic.positions,
                     cell_dimensions=sample.static.cell_dimensions,
                 )
+
+                # TODO реализовать статический и динамический структурный фактор, функцию Ван-Хова, рассеяния
+
                 radiuses = np.arange(layer_thickness, static_distances.max() + 1, layer_thickness)
                 rdf_hist = np.histogram(
                     static_distances.flatten(),
