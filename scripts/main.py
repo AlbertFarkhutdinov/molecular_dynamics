@@ -36,8 +36,8 @@ if __name__ == '__main__':
     set_printoptions(threshold=5000)
 
     # CONFIG_FILE_NAME = 'book_chapter_4_stage_1.json'
-    CONFIG_FILE_NAME = 'slow_cooling.json'
-    # CONFIG_FILE_NAME = 'book_chapter_4_stage_2.json'
+    # CONFIG_FILE_NAME = 'slow_cooling.json'
+    CONFIG_FILE_NAME = 'book_chapter_4_stage_2.json'
     # CONFIG_FILE_NAME = 'cooling.json'
     # CONFIG_FILE_NAME = 'equilibrium_2.8.json'
     # CONFIG_FILE_NAME = 'equilibrium_0.01.json'
@@ -46,13 +46,5 @@ if __name__ == '__main__':
     main(
         config_filename=CONFIG_FILE_NAME,
         is_initially_frozen=False,
-        is_rdf_calculated=True,
+        is_rdf_calculated=False,
     )
-
-    # main(config_filename=CONFIG_FILE_NAME, is_initially_frozen=False, is_rdf_calculated=True, )
-    # md = MolecularDynamics(config_filename=CONFIG_FILE_NAME, is_initially_frozen=False, is_rdf_calculated=True,)
-    # md.verlet.load_forces(md.potential.potential_table)
-    # run(
-    #     'md.verlet.load_forces(md.potential.potential_table)',
-    #     sort=2,
-    # )

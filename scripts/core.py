@@ -178,14 +178,23 @@ class MolecularDynamics:
         log_debug_info(f'External Pressure: {self.verlet.external.pressure}')
 
     def equilibrate_system(self, equilibration_steps: int):
+        virial = 0
         for eq_step in range(equilibration_steps):
+            temperature = self.dynamic.temperature()
+            pressure = self.dynamic.get_pressure(
+                virial=virial,
+                temperature=temperature,
+                cell_volume=self.static.get_cell_volume(),
+                density=self.static.get_density()
+            )
             message = (
-                f'Equilibration Step: {eq_step}/{equilibration_steps}, '
-                f'Temperature = {self.dynamic.temperature():.5f} epsilon/k_B'
+                f'Equilibration Step: {eq_step:3d}/{equilibration_steps}, \t'
+                f'Temperature = {temperature:8.5f} epsilon/k_B, \t'
+                f'Pressure = {pressure:.5f} epsilon/sigma^3, \t'
             )
             log_debug_info(message)
             print(message)
-            self.md_time_step(
+            virial = self.md_time_step(
                 potential_table=self.potential.potential_table,
                 step=1,
                 is_rdf_calculation=True,
@@ -227,14 +236,22 @@ class MolecularDynamics:
 
         print(f'********RDF Calculation started********')
         for rdf_step in range(1, steps_number + 1):
+            temperature = sample.dynamic.temperature()
+            pressure = sample.dynamic.get_pressure(
+                virial=virial,
+                temperature=temperature,
+                cell_volume=sample.static.get_cell_volume(),
+                density=sample.static.get_density()
+            )
             message = (
                 f'RDF Step: {rdf_step}/{steps_number}, '
-                f'Temperature = {sample.dynamic.temperature():.5f} epsilon/k_B'
+                f'Temperature = {temperature:8.5f} epsilon/k_B, \t'
+                f'Pressure = {pressure:.5f} epsilon/sigma^3, \t'
             )
             log_debug_info(message)
             print(message)
 
-            sample.md_time_step(
+            virial = sample.md_time_step(
                 potential_table=sample.potential.potential_table,
                 step=rdf_step,
                 is_rdf_calculation=True,

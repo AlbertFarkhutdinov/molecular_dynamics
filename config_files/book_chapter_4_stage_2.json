@@ -4,7 +4,7 @@
     "lattice_constant": 1.75,
     "particles_number": 0,
     "crystal_type": "гцк",
-    "file_name": "2020-12-17/system_configuration.csv"
+    "file_name": "2020-12-22_heating/system_configuration.csv"
   },
   "external_parameters": {
     "environment_type": "nose_hoover",
