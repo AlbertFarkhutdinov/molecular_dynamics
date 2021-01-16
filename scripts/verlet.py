@@ -245,6 +245,8 @@ class Verlet:
             positions=self.dynamic.positions,
             accelerations=self.dynamic.accelerations,
             cell_dimensions=self.static.cell_dimensions,
+            # radius_vectors=self.dynamic.interparticle_vectors,
+            # distances=self.dynamic.interparticle_distances,
         )
         acc_mag = (self.dynamic.accelerations ** 2).sum(axis=1) ** 0.5
         log_debug_info(f'Mean and max acceleration: {acc_mag.mean()}, {acc_mag.max()}')
@@ -275,6 +277,7 @@ class Verlet:
             all_neighbours=self.neighbours_lists['all_neighbours'],
             first_neighbours=self.neighbours_lists['first_neighbours'],
             last_neighbours=self.neighbours_lists['last_neighbours'],
+            # distances=self.dynamic.interparticle_distances,
         )
 
     @logger_wraps()

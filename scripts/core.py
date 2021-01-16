@@ -94,6 +94,7 @@ class MolecularDynamics:
             stage_id=1,
             environment_type=self.environment_type,
         )
+        # self.dynamic.calculate_interparticle_vectors()
         if is_pbc_switched_on:
             self.dynamic.boundary_conditions()
         potential_energy, virial = self.verlet.load_forces(
@@ -244,14 +245,20 @@ class MolecularDynamics:
                 first_step = 0
                 first_positions[rdf_step] = deepcopy(sample.dynamic.positions)
                 first_velocities[rdf_step] = deepcopy(sample.dynamic.velocities)
-                static_distances = get_interparticle_distances(
-                    distances=np.zeros(
-                        (sample.static.particles_number, sample.static.particles_number),
-                        dtype=np.float,
-                    ),
-                    positions=sample.dynamic.positions,
-                    cell_dimensions=sample.static.cell_dimensions,
-                )
+                # static_distances = deepcopy(sample.dynamic.interparticle_distances)
+                sample.dynamic.calculate_interparticle_vectors()
+                static_radius_vectors = sample.dynamic.interparticle_vectors
+                static_distances = sample.dynamic.interparticle_distances
+                # static_radius_vectors
+                # static_radius_vectors, static_distances
+                # static_distances = get_interparticle_distances(
+                #     distances=np.zeros(
+                #         (sample.static.particles_number, sample.static.particles_number),
+                #         dtype=np.float,
+                #     ),
+                #     positions=sample.dynamic.positions,
+                #     cell_dimensions=sample.static.cell_dimensions,
+                # )
 
                 # TODO реализовать статический и динамический структурный фактор, функцию Ван-Хова, рассеяния
 
@@ -348,7 +355,7 @@ class MolecularDynamics:
             value_size=self.model.iterations_numbers,
         )
 
-        self.reduce_transition_processes()
+        # self.reduce_transition_processes()
         self.dynamic.first_positions = deepcopy(self.dynamic.positions)
 
         for step in range(1, self.model.iterations_numbers + 1):

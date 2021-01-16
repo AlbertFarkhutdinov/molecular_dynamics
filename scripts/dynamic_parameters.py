@@ -1,10 +1,11 @@
 import numpy as np
 import numba
-from scipy.spatial.distance import pdist, squareform
+# from scipy.spatial.distance import pdist, squareform
 
 from scripts.static_parameters import SystemStaticParameters
 from scripts.helpers import get_empty_vectors
 from scripts.log_config import logger_wraps
+from scripts.numba_procedures import get_radius_vectors
 
 
 class SystemDynamicParameters:
@@ -29,6 +30,22 @@ class SystemDynamicParameters:
         if temperature:
             self.get_initial_velocities(temperature=temperature)
         self.displacements = get_empty_vectors(self.particles_number)
+        self.interparticle_vectors = np.zeros(
+            (self.particles_number, self.particles_number, 3),
+            dtype=np.float32,
+        )
+        self.interparticle_distances = np.zeros(
+            (self.particles_number, self.particles_number),
+            dtype=np.float32,
+        )
+
+    def calculate_interparticle_vectors(self):
+        self.interparticle_vectors, self.interparticle_distances = get_radius_vectors(
+            radius_vectors=self.interparticle_vectors,
+            positions=self.positions,
+            cell_dimensions=self.cell_dimensions,
+            distances=self.interparticle_distances,
+        )
 
     def get_initial_velocities(self, temperature: float) -> None:
         np.random.seed(0)
@@ -90,16 +107,16 @@ class SystemDynamicParameters:
         _system_kinetic_energy = system_kinetic_energy or self.system_kinetic_energy
         return 2.0 * _system_kinetic_energy / 3.0 / self.particles_number
 
-    @property
-    def interparticle_distances(self):
-        return squareform(
-            pdist(self.positions, 'euclidean')
-        )
-
-    @staticmethod
-    @numba.jit(nopython=True)
-    def _interparticle_distances(positions):
-        return pdist(positions, 'euclidean')
+    # @property
+    # def interparticle_distances(self):
+    #     return squareform(
+    #         pdist(self.positions, 'euclidean')
+    #     )
+    #
+    # @staticmethod
+    # @numba.jit(nopython=True)
+    # def _interparticle_distances(positions):
+    #     return pdist(positions, 'euclidean')
 
     def get_pressure(
             self,

@@ -45,6 +45,21 @@ def get_interparticle_distances(positions, distances, cell_dimensions):
 
 
 @njit
+def get_radius_vectors(positions, radius_vectors, cell_dimensions, distances):
+    for i in prange(len(radius_vectors[0]) - 1):
+        for j in prange(i + 1, len(radius_vectors[0])):
+            distance = 0
+            radius_vector = positions[i] - positions[j]
+            for k in prange(3):
+                if radius_vector[k] < -cell_dimensions[k] / 2 or radius_vector[k] >= cell_dimensions[k] / 2:
+                    radius_vector[k] -= math_round(radius_vector[k] / cell_dimensions[k]) * cell_dimensions[k]
+                distance += radius_vector[k] * radius_vector[k]
+            distances[i, j] = distance ** 0.5
+            radius_vectors[i, j] = radius_vector
+    return radius_vectors, distances
+
+
+@njit
 def get_time_displacements(positions_1, positions_2, distances):
     for i in prange(len(distances[0]) - 1):
         for j in prange(i + 1, len(distances[0])):
@@ -69,6 +84,8 @@ def lf_cycle(
         positions,
         accelerations,
         cell_dimensions,
+        # radius_vectors,
+        # distances,
 ):
     virial = 0
     for i in prange(particles_number - 1):
@@ -77,6 +94,8 @@ def lf_cycle(
                 last_neighbours[i] + 1,
         ):
             j = all_neighbours[k]
+            # distance = distances[i][j]
+            # radius_vector = radius_vectors[i][j]
             radius_vector, distance = get_radius_vector(
                 index_1=i,
                 index_2=j,
@@ -84,7 +103,6 @@ def lf_cycle(
                 cell_dimensions=cell_dimensions
             )
             if distance < r_cut:
-                # table_row = int((distance - 0.5) / 0.0001)
                 table_row = int(math_round((distance - 0.5) / 0.0001))
                 potential_ij = potential_table[table_row - 1, 0]
                 force_ij = potential_table[table_row - 1, 1]
@@ -94,7 +112,7 @@ def lf_cycle(
                 virial += force_ij * distance * distance / 2
                 accelerations[i] += acceleration_ij
                 accelerations[j] -= acceleration_ij
-                assert table_row >= 1
+                # assert table_row >= 1
 
     return virial
 
@@ -109,10 +127,12 @@ def update_list_cycle(
         all_neighbours: np.ndarray,
         first_neighbours: np.ndarray,
         last_neighbours: np.ndarray,
+        # distances,
 ):
     k = 1
     for i in prange(particles_number - 1):
         for j in prange(i + 1, particles_number):
+            # distance = distances[i][j]
             radius_vector, distance = get_radius_vector(
                 index_1=i,
                 index_2=j,

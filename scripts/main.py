@@ -12,6 +12,7 @@ pressure = epsilon / (sigma ^ 3) = 4.2E7 pascal = 4.2E2 atmospheres
 
 """
 
+from cProfile import run
 
 from numpy import set_printoptions
 
@@ -40,9 +41,18 @@ if __name__ == '__main__':
     # CONFIG_FILE_NAME = 'cooling.json'
     # CONFIG_FILE_NAME = 'equilibrium_2.8.json'
     # CONFIG_FILE_NAME = 'equilibrium_0.01.json'
+    # CONFIG_FILE_NAME = 'calculation_time_test.json'
 
     main(
         config_filename=CONFIG_FILE_NAME,
         is_initially_frozen=False,
         is_rdf_calculated=True,
     )
+
+    # main(config_filename=CONFIG_FILE_NAME, is_initially_frozen=False, is_rdf_calculated=True, )
+    # md = MolecularDynamics(config_filename=CONFIG_FILE_NAME, is_initially_frozen=False, is_rdf_calculated=True,)
+    # md.verlet.load_forces(md.potential.potential_table)
+    # run(
+    #     'md.verlet.load_forces(md.potential.potential_table)',
+    #     sort=2,
+    # )
