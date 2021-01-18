@@ -149,3 +149,31 @@ def update_list_cycle(
             all_neighbours[k] = j
             k = k + advances[j]
         last_neighbours[i] = k - 1
+
+
+@njit
+def get_static_structure_factors(wave_vectors, static_radius_vectors, particles_number):
+    _static_structure_factors = []
+    for vector in wave_vectors:
+        _static_structure_factors.append((
+                np.cos((vector * static_radius_vectors).sum(axis=1)).sum()
+                / particles_number
+        ))
+    return np.array(_static_structure_factors, dtype=np.float32)
+
+
+@njit
+def get_unique_ssf(wave_numbers, static_structure_factors):
+    _wave_numbers = []
+    for number in wave_numbers:
+        if round(number, 6) not in _wave_numbers:
+            _wave_numbers.append(round(number, 6))
+
+    _static_structure_factors = np.zeros(len(_wave_numbers))
+    for i in prange(len(_wave_numbers)):
+        for j in prange(len(wave_numbers)):
+            if wave_numbers[j] == _wave_numbers[i]:
+                _static_structure_factors[i] += static_structure_factors[j]
+
+    _wave_numbers = np.array(_wave_numbers)
+    return _wave_numbers, _static_structure_factors
