@@ -104,7 +104,6 @@ class Verlet:
     @logger_wraps()
     def velocity_scaling_2(
             self,
-            virial: float,
             potential_energy: float,
             system_kinetic_energy: float,
     ):
@@ -113,7 +112,6 @@ class Verlet:
         )
         pressure = self.dynamic.get_pressure(
             temperature=temperature,
-            virial=virial,
         )
         log_debug_info(f'Pressure before velocity_scaling_2: {pressure};')
         log_debug_info(f'Temperature before velocity_scaling_2: {temperature};')
@@ -127,7 +125,6 @@ class Verlet:
     @logger_wraps()
     def nose_hoover_2(
             self,
-            virial: float,
             potential_energy: float,
             system_kinetic_energy: float,
     ):
@@ -137,7 +134,6 @@ class Verlet:
         cell_volume = self.static.get_cell_volume()
         density = self.static.get_density()
         pressure = self.dynamic.get_pressure(
-            virial=virial,
             temperature=temperature,
             cell_volume=cell_volume,
         )
@@ -156,7 +152,6 @@ class Verlet:
         cell_volume = self.static.get_cell_volume()
         density = self.static.get_density()
         pressure = self.dynamic.get_pressure(
-            virial=virial,
             temperature=temperature,
             cell_volume=cell_volume,
         )
@@ -188,7 +183,11 @@ class Verlet:
             ds += (velocities_old * b).sum() * time_ratio
             dd = 1 - nvt_factor_old * half_time
             ds -= dd * (
-                    (3.0 * self.static.particles_number * self.model.initial_temperature - 2.0 * system_kinetic_energy)
+                    (
+                            3.0 * self.static.particles_number
+                            * self.model.initial_temperature
+                            - 2.0 * system_kinetic_energy
+                    )
                     * time_ratio / 2.0
                     - (self.nvt_factor - nvt_factor_old)
             )
@@ -213,7 +212,6 @@ class Verlet:
         cell_volume = self.static.get_cell_volume()
         temperature = self.dynamic.temperature()
         pressure = self.dynamic.get_pressure(
-            virial=virial,
             temperature=temperature,
             cell_volume=cell_volume,
         )
@@ -234,7 +232,7 @@ class Verlet:
             self.dynamic.displacements = get_empty_vectors(self.static.particles_number)
             self.potential.update_test = False
 
-        virial = lf_cycle(
+        self.dynamic.virial = lf_cycle(
             particles_number=self.static.particles_number,
             all_neighbours=self.neighbours_lists['all_neighbours'],
             first_neighbours=self.neighbours_lists['first_neighbours'],
@@ -245,8 +243,6 @@ class Verlet:
             positions=self.dynamic.positions,
             accelerations=self.dynamic.accelerations,
             cell_dimensions=self.static.cell_dimensions,
-            # radius_vectors=self.dynamic.interparticle_vectors,
-            # distances=self.dynamic.interparticle_distances,
         )
         acc_mag = (self.dynamic.accelerations ** 2).sum(axis=1) ** 0.5
         log_debug_info(f'Mean and max acceleration: {acc_mag.mean()}, {acc_mag.max()}')
@@ -258,7 +254,7 @@ class Verlet:
         self.load_move_test()
         log_debug_info(f'Potential energy: {potential_energy};')
         log_debug_info(f"Exiting 'load_forces(potential_table)'")
-        return potential_energy, virial
+        return potential_energy
 
     @logger_wraps()
     def update_list(self):
@@ -277,7 +273,6 @@ class Verlet:
             all_neighbours=self.neighbours_lists['all_neighbours'],
             first_neighbours=self.neighbours_lists['first_neighbours'],
             last_neighbours=self.neighbours_lists['last_neighbours'],
-            # distances=self.dynamic.interparticle_distances,
         )
 
     @logger_wraps()

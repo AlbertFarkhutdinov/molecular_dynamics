@@ -26,7 +26,7 @@ class MolecularDynamics:
             self,
             config_filename: Optional[str] = None,
             is_initially_frozen: bool = True,
-            is_rdf_calculated: bool = True,
+            is_with_isotherms: bool = True,
             is_msd_calculated: bool = True,
     ):
         _config_filename = join(
@@ -75,7 +75,7 @@ class MolecularDynamics:
             **config_parameters['saver_parameters'],
         )
         self.isotherm_parameters = config_parameters['isotherm_parameters']
-        self.is_rdf_calculated = is_rdf_calculated
+        self.is_with_isotherms = is_with_isotherms
         self.is_msd_calculated = is_msd_calculated
         self.environment_type = external.environment_type
 
@@ -94,13 +94,12 @@ class MolecularDynamics:
         # self.dynamic.calculate_interparticle_vectors()
         if is_pbc_switched_on:
             self.dynamic.boundary_conditions()
-        potential_energy, virial = self.verlet.load_forces(
+        potential_energy = self.verlet.load_forces(
             potential_table=potential_table,
         )
         parameters = {
             'system_kinetic_energy': system_kinetic_energy,
             'potential_energy': potential_energy,
-            'virial': virial,
         }
         pressure, total_energy = self.verlet.system_dynamics(
             stage_id=2,
@@ -114,6 +113,7 @@ class MolecularDynamics:
             ),
             'pressure': pressure,
             'total_energy': total_energy,
+            'virial': self.dynamic.virial,
         })
 
         log_debug_info(f'Kinetic Energy after system_dynamics_2: {self.dynamic.system_kinetic_energy}')
@@ -121,16 +121,17 @@ class MolecularDynamics:
         log_debug_info(f'Pressure after system_dynamics_2: {pressure}')
         log_debug_info(f'Potential energy after system_dynamics_2: {potential_energy}')
         log_debug_info(f'Total energy after system_dynamics_2: {total_energy}')
-        log_debug_info(f'Virial after system_dynamics_2: {virial}')
+        log_debug_info(f'Virial after system_dynamics_2: {self.dynamic.virial}')
         if not is_rdf_calculation and system_parameters is not None:
-            msd = self.dynamic.get_msd(
-                previous_positions=self.dynamic.first_positions,
-            )
-            diffusion = msd / 6 / self.model.time_step / step
-            parameters['msd'] = msd
-            parameters['diffusion'] = diffusion
-            log_debug_info(f'MSD after system_dynamics_2: {msd}')
-            log_debug_info(f'Diffusion after system_dynamics_2: {diffusion}')
+            if self.is_msd_calculated:
+                msd = self.dynamic.get_msd(
+                    previous_positions=self.dynamic.first_positions,
+                )
+                diffusion = msd / 6 / self.model.time_step / step
+                parameters['msd'] = msd
+                parameters['diffusion'] = diffusion
+                log_debug_info(f'MSD after system_dynamics_2: {msd}')
+                log_debug_info(f'Diffusion after system_dynamics_2: {diffusion}')
 
             self.saver.dynamic = self.dynamic
             self.saver.step = step
@@ -141,7 +142,6 @@ class MolecularDynamics:
             )
             self.saver.store_configuration()
             self.saver.save_configurations()
-        return virial
 
     def fix_current_temperature(self):
         self.verlet.external.temperature = round(self.dynamic.temperature(), 5)
@@ -164,22 +164,19 @@ class MolecularDynamics:
             )
         self.verlet.external.temperature = external_temperature
 
-    def fix_external_conditions(self, virial: float = None):
+    def fix_external_conditions(self):
         print(f'********Isotherm for T = {self.dynamic.temperature():.5f}********')
         self.fix_current_temperature()
         self.verlet.external.pressure = self.dynamic.get_pressure(
-            virial=virial,
             temperature=self.verlet.external.temperature,
         )
         log_debug_info(f'External Temperature: {self.verlet.external.temperature}')
         log_debug_info(f'External Pressure: {self.verlet.external.pressure}')
 
     def equilibrate_system(self, equilibration_steps: int):
-        virial = 0
         for eq_step in range(equilibration_steps):
             temperature = self.dynamic.temperature()
             pressure = self.dynamic.get_pressure(
-                virial=virial,
                 temperature=temperature,
                 cell_volume=self.static.get_cell_volume(),
                 density=self.static.get_density()
@@ -191,11 +188,20 @@ class MolecularDynamics:
             )
             log_debug_info(message)
             print(message)
-            virial = self.md_time_step(
+            self.md_time_step(
                 potential_table=self.potential.potential_table,
                 step=1,
                 is_rdf_calculation=True,
             )
+
+    def save_all(self, system_parameters):
+        self.saver.save_configurations(
+            is_last_step=True,
+        )
+        self.saver.save_system_parameters(
+            system_parameters=system_parameters,
+        )
+        self.saver.save_configuration()
 
     @logger_wraps()
     def run_md(self):
@@ -233,18 +239,12 @@ class MolecularDynamics:
             )
             log_debug_info(f'End of step {step}.\n')
 
-            if self.is_rdf_calculated:
+            if self.is_with_isotherms:
                 if step in (1, 1000) or step % self.isotherm_parameters['isotherm_saving_step'] == 0:
                     Isotherm(
                         sample=deepcopy(self),
-                        virial=system_parameters['virial'][step - 1],
                     ).run()
-
-        self.saver.save_configurations(
-            is_last_step=True,
-        )
-        self.saver.save_system_parameters(
+        self.save_all(
             system_parameters=system_parameters,
         )
-        self.saver.save_configuration()
         print(f'Calculation completed. Time of calculation: {datetime.now() - start}')

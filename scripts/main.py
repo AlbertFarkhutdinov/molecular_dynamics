@@ -27,7 +27,7 @@ def main(
     MolecularDynamics(
         config_filename=config_filename,
         is_initially_frozen=is_initially_frozen,
-        is_rdf_calculated=is_rdf_calculated
+        is_with_isotherms=is_rdf_calculated
     ).run_md()
 
 

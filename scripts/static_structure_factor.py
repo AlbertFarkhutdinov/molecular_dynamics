@@ -46,8 +46,11 @@ class StaticStructureFactor:
         )[0]
         self.ssf[:k_hist.size][k_hist != 0] += static_structure_factors
 
-    def save(self):
+    def normalize(self):
         self.ssf = self.ssf / self.ensembles_number
+
+    def save(self):
+        self.normalize()
         Saver().save_dict(
             data={
                 'wave_number': self.wave_numbers_range,
