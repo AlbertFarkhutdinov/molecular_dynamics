@@ -23,6 +23,7 @@ class SystemDynamicParameters:
         self.velocities = get_empty_vectors(self.particles_number)
         self.accelerations = get_empty_vectors(self.particles_number)
         self.virial = 0.0
+        self.potential_energy = 0.0
         if self.static.init_type == 1:
             self.generate_ordered_state()
         elif self.static.init_type == 2:

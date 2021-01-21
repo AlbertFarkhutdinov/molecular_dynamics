@@ -22,12 +22,12 @@ from scripts.core import MolecularDynamics
 def main(
         config_filename: str = None,
         is_initially_frozen: bool = True,
-        is_rdf_calculated: bool = True,
+        is_with_isotherms: bool = True,
 ):
     MolecularDynamics(
         config_filename=config_filename,
         is_initially_frozen=is_initially_frozen,
-        is_with_isotherms=is_rdf_calculated
+        is_with_isotherms=is_with_isotherms
     ).run_md()
 
 
@@ -37,8 +37,8 @@ if __name__ == '__main__':
 
     # CONFIG_FILE_NAME = 'book_chapter_4_stage_1.json'
     # CONFIG_FILE_NAME = 'slow_cooling.json'
-    # CONFIG_FILE_NAME = 'book_chapter_4_stage_2.json'
-    CONFIG_FILE_NAME = 'cooling.json'
+    CONFIG_FILE_NAME = 'book_chapter_4_stage_2.json'
+    # CONFIG_FILE_NAME = 'cooling.json'
     # CONFIG_FILE_NAME = 'equilibrium_2.8.json'
     # CONFIG_FILE_NAME = 'equilibrium_0.01.json'
     # CONFIG_FILE_NAME = 'calculation_time_test.json'
@@ -46,5 +46,5 @@ if __name__ == '__main__':
     main(
         config_filename=CONFIG_FILE_NAME,
         is_initially_frozen=False,
-        is_rdf_calculated=True,
+        is_with_isotherms=False,
     )
