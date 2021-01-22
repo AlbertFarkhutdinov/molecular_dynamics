@@ -62,9 +62,12 @@ class Verlet:
         temperature = self.dynamic.temperature(
             system_kinetic_energy=system_kinetic_energy,
         )
-        pressure = self.dynamic.get_pressure()
         cell_volume = self.static.get_cell_volume()
-        density = self.static.get_density()
+        density = self.static.get_density(volume=cell_volume)
+        pressure = self.dynamic.get_pressure(
+            cell_volume=cell_volume,
+            density=density,
+        )
         total_energy = system_kinetic_energy + self.dynamic.potential_energy
         log_postfix = f'after {integrator.__class__.__name__}.stage_{stage_id}()'
         log_debug_info(f'Kinetic Energy {log_postfix}: {system_kinetic_energy};')
@@ -76,7 +79,7 @@ class Verlet:
         if stage_id == 1:
             return system_kinetic_energy, temperature
         if stage_id == 2:
-            return pressure, total_energy
+            return cell_volume, density, pressure, total_energy
 
     def load_forces(
             self,

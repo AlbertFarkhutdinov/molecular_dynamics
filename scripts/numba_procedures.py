@@ -84,8 +84,6 @@ def lf_cycle(
         positions,
         accelerations,
         cell_dimensions,
-        # radius_vectors,
-        # distances,
 ):
     virial = 0
     for i in prange(particles_number - 1):
@@ -94,8 +92,6 @@ def lf_cycle(
                 last_neighbours[i] + 1,
         ):
             j = all_neighbours[k]
-            # distance = distances[i][j]
-            # radius_vector = radius_vectors[i][j]
             radius_vector, distance = get_radius_vector(
                 index_1=i,
                 index_2=j,
@@ -127,12 +123,10 @@ def update_list_cycle(
         all_neighbours: np.ndarray,
         first_neighbours: np.ndarray,
         last_neighbours: np.ndarray,
-        # distances,
 ):
     k = 1
     for i in prange(particles_number - 1):
         for j in prange(i + 1, particles_number):
-            # distance = distances[i][j]
             radius_vector, distance = get_radius_vector(
                 index_1=i,
                 index_2=j,
@@ -188,6 +182,7 @@ def get_boundary_conditions(
     for i in range(particles_number):
         for j in range(3):
             if positions[i][j] >= cell_dimensions[j] / 2.0:
-                positions[i][j] -= cell_dimensions[j]
+                positions[i][j] -= math_round(positions[i][j] / cell_dimensions[j]) * cell_dimensions[j]
             if positions[i][j] < -cell_dimensions[j] / 2.0:
-                positions[i][j] += cell_dimensions[j]
+                positions[i][j] -= math_round(positions[i][j] / cell_dimensions[j]) * cell_dimensions[j]
+    return positions

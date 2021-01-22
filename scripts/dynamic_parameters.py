@@ -1,3 +1,5 @@
+from copy import deepcopy
+
 import numpy as np
 
 from scripts.static_parameters import SystemStaticParameters
@@ -153,12 +155,24 @@ class SystemDynamicParameters:
         )
 
     @logger_wraps()
-    def boundary_conditions(self) -> None:
+    def boundary_conditions(self, positions=None) -> None:
+        _positions = self.positions if positions is None else positions
         get_boundary_conditions(
             cell_dimensions=self.cell_dimensions,
             particles_number=self.particles_number,
-            positions=self.positions
+            positions=_positions,
         )
 
     def get_msd(self, previous_positions):
         return ((self.positions - previous_positions) ** 2).sum() / self.particles_number
+
+    def get_volume(self):
+        _positions = deepcopy(self.positions)
+        _positions = get_boundary_conditions(
+            cell_dimensions=self.cell_dimensions,
+            particles_number=self.particles_number,
+            positions=_positions,
+        )
+        linear_dimensions = np.max(_positions, axis=0) - np.min(_positions, axis=0)
+        _volume = np.max(linear_dimensions) ** 3
+        return _volume

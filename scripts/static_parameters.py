@@ -42,5 +42,6 @@ class SystemStaticParameters:
     def get_cell_volume(self) -> float:
         return self.cell_dimensions.prod()
 
-    def get_density(self) -> float:
-        return self.particles_number / self.get_cell_volume()
+    def get_density(self, volume=None) -> float:
+        _volume = volume or self.get_cell_volume()
+        return self.particles_number / _volume

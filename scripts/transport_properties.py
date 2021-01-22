@@ -1,7 +1,5 @@
 from copy import deepcopy
 
-# import numpy as np
-
 from scripts.helpers import get_parameters_dict
 from scripts.saver import Saver
 
@@ -28,10 +26,6 @@ class TransportProperties:
             value_size=2 * self.ensembles_number - 1,
         )
         # TODO implement Van-Hove function, scattering function, dynamic structure factor
-
-        # van_hove = np.array([
-        #     get_empty_float_scalars(20 * sample.static.particles_number) for _ in range(ensembles_number)
-        # ])
 
     def init_ensembles(self):
         self.first_positions[self.step] = deepcopy(self.sample.dynamic.positions)

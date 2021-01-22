@@ -2,7 +2,6 @@ import numpy as np
 
 from scripts.dynamic_parameters import SystemDynamicParameters
 from scripts.external_parameters import ExternalParameters
-# from scripts.log_config import log_debug_info, logger_wraps
 from scripts.static_parameters import SystemStaticParameters
 
 
@@ -47,11 +46,11 @@ class MTK:
         aa = np.exp(vlogv_dt2)
         aa_2 = aa * aa
         arg_2 = vlogv_dt2 * vlogv_dt2
-        # Разложение -sin(x) / x
         poly = 1.0 + arg_2 / fact_3 + arg_2 ** 2 / fact_5 + arg_2 ** 3 / fact_7 + arg_2 ** 4 / fact_9
         bb = aa * poly * self.time_step
         self.dynamic.positions = self.dynamic.positions * aa_2 + self.dynamic.velocities * bb
         self.epsilon += self.npt_factor * self.time_step
+        self.static.cell_dimensions = np.ones(3) * (3 * np.exp(self.epsilon)) ** (1 / 3)
 
     def stage_2(self):
         self.dynamic.get_next_velocities(time_step=self.time_step)
@@ -114,8 +113,12 @@ class MTK:
             self,
             system_kinetic_energy: float,
     ):
-        # TODO
-        internal_pressure = self.dynamic.get_pressure()
+        # TODO get right pressure and volume values.
+        cell_volume = self.static.get_cell_volume()
+        internal_pressure = self.dynamic.get_pressure(
+            cell_volume=cell_volume,
+            density=self.static.get_density(volume=cell_volume),
+        )
         return (
                        1 / self.static.particles_number * 2 * system_kinetic_energy
                        + 3.0 * self.static.get_cell_volume() * (internal_pressure - self.external.pressure)
