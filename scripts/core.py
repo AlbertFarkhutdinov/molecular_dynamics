@@ -88,49 +88,32 @@ class MolecularDynamics:
             is_pbc_switched_on: bool = False,
     ):
         parameters = {}
-        if self.environment_type == 'mtk':
-            self.verlet.mtk_integrate()
-            parameters['system_kinetic_energy'] = self.dynamic.system_kinetic_energy
-            parameters['potential_energy'] = self.dynamic.potential_energy
-            parameters['temperature'] = self.dynamic.temperature(
+        system_kinetic_energy, temperature = self.verlet.system_dynamics(
+            stage_id=1,
+            environment_type=self.environment_type,
+        )
+        # self.dynamic.calculate_interparticle_vectors()
+        if is_pbc_switched_on:
+            self.dynamic.boundary_conditions()
+        self.verlet.load_forces(
+            potential_table=potential_table,
+        )
+        parameters['system_kinetic_energy'] = system_kinetic_energy
+        parameters['potential_energy'] = self.dynamic.potential_energy
+        pressure, total_energy = self.verlet.system_dynamics(
+            stage_id=2,
+            environment_type=self.environment_type,
+            # **parameters,
+        )
+        parameters.update({
+            'system_kinetic_energy': self.dynamic.system_kinetic_energy,
+            'temperature': self.dynamic.temperature(
                 system_kinetic_energy=parameters['system_kinetic_energy']
-            )
-            parameters['pressure'] = self.dynamic.get_pressure(
-                virial=self.dynamic.virial,
-                temperature=parameters['temperature'],
-            )
-            parameters['total_energy'] = (
-                    parameters['system_kinetic_energy']
-                    + parameters['potential_energy']
-            )
-            parameters['virial'] = self.dynamic.virial
-        else:
-            system_kinetic_energy, temperature = self.verlet.system_dynamics(
-                stage_id=1,
-                environment_type=self.environment_type,
-            )
-            # self.dynamic.calculate_interparticle_vectors()
-            if is_pbc_switched_on:
-                self.dynamic.boundary_conditions()
-            self.verlet.load_forces(
-                potential_table=potential_table,
-            )
-            parameters['system_kinetic_energy'] = system_kinetic_energy
-            parameters['potential_energy'] = self.dynamic.potential_energy
-            pressure, total_energy = self.verlet.system_dynamics(
-                stage_id=2,
-                environment_type=self.environment_type,
-                **parameters,
-            )
-            parameters.update({
-                'system_kinetic_energy': self.dynamic.system_kinetic_energy,
-                'temperature': self.dynamic.temperature(
-                    system_kinetic_energy=parameters['system_kinetic_energy']
-                ),
-                'pressure': pressure,
-                'total_energy': total_energy,
-                'virial': self.dynamic.virial,
-            })
+            ),
+            'pressure': pressure,
+            'total_energy': total_energy,
+            'virial': self.dynamic.virial,
+        })
 
         log_debug_info(f'Kinetic Energy after system_dynamics_2: {self.dynamic.system_kinetic_energy}')
         log_debug_info(f'Temperature after system_dynamics_2: {parameters["temperature"]}')
@@ -138,6 +121,8 @@ class MolecularDynamics:
         log_debug_info(f'Potential energy after system_dynamics_2: {parameters["potential_energy"]}')
         log_debug_info(f'Total energy after system_dynamics_2: {parameters["total_energy"]}')
         log_debug_info(f'Virial after system_dynamics_2: {self.dynamic.virial}')
+        log_debug_info(f'Cell volume after system_dynamics_2: {self.static.get_cell_volume()}')
+        log_debug_info(f'Density after system_dynamics_2: {self.static.get_density()}')
         if not is_rdf_calculation and system_parameters is not None:
             if self.is_msd_calculated:
                 msd = self.dynamic.get_msd(

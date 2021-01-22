@@ -177,3 +177,17 @@ def get_unique_ssf(wave_numbers, static_structure_factors):
 
     _wave_numbers = np.array(_wave_numbers)
     return _wave_numbers, _static_structure_factors
+
+
+@njit
+def get_boundary_conditions(
+        cell_dimensions: np.ndarray,
+        particles_number: int,
+        positions: np.ndarray,
+):
+    for i in range(particles_number):
+        for j in range(3):
+            if positions[i][j] >= cell_dimensions[j] / 2.0:
+                positions[i][j] -= cell_dimensions[j]
+            if positions[i][j] < -cell_dimensions[j] / 2.0:
+                positions[i][j] += cell_dimensions[j]

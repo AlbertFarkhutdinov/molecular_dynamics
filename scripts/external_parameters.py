@@ -5,9 +5,9 @@ class ExternalParameters:
 
     def __init__(
             self,
-            temperature: float,
             heating_velocity: float,
             environment_type: str,
+            temperature: float,
             pressure: float = None,
             **kwargs,
     ):

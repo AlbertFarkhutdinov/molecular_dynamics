@@ -1,10 +1,9 @@
 import numpy as np
-import numba
 
 from scripts.static_parameters import SystemStaticParameters
 from scripts.helpers import get_empty_vectors
 from scripts.log_config import logger_wraps
-from scripts.numba_procedures import get_radius_vectors
+from scripts.numba_procedures import get_radius_vectors, get_boundary_conditions
 
 
 class SystemDynamicParameters:
@@ -155,48 +154,11 @@ class SystemDynamicParameters:
 
     @logger_wraps()
     def boundary_conditions(self) -> None:
-        self._boundary_conditions(
+        get_boundary_conditions(
             cell_dimensions=self.cell_dimensions,
             particles_number=self.particles_number,
             positions=self.positions
         )
-
-    @staticmethod
-    @numba.jit(nopython=True)
-    def _boundary_conditions(
-            cell_dimensions: np.ndarray,
-            particles_number: int,
-            positions: np.ndarray,
-    ):
-        for i in range(particles_number):
-            for j in range(3):
-                if positions[i][j] >= cell_dimensions[j] / 2.0:
-                    positions[i][j] -= cell_dimensions[j]
-                if positions[i][j] < -cell_dimensions[j] / 2.0:
-                    positions[i][j] += cell_dimensions[j]
-
-    def distance_refold(self):
-        for i in range(self.particles_number - 1):
-            for j in range(i + 1, self.particles_number):
-                radius_vector = self.get_radius_vector(i, j)
-                radius_vector -= (radius_vector / self.cell_dimensions).astype(np.int) * self.cell_dimensions
-
-    def get_radius_vector(self, index_1: int, index_2):
-        return self.positions[index_1] - self.positions[index_2]
-
-    @staticmethod
-    @numba.njit(numba.float64(numba.float64[:]))
-    def _get_distance(radius_vector):
-        return np.linalg.norm(radius_vector)
-
-    def get_distance(
-            self,
-            index_1: int,
-            index_2: int,
-    ):
-        radius_vector = self.positions[index_1] - self.positions[index_2]
-        radius_vector -= (radius_vector / self.cell_dimensions).astype(numba.int32) * self.cell_dimensions
-        return (radius_vector ** 2).sum()
 
     def get_msd(self, previous_positions):
         return ((self.positions - previous_positions) ** 2).sum() / self.particles_number
