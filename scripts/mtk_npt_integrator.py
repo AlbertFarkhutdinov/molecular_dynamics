@@ -57,7 +57,6 @@ class MTK:
         self.nose_hoover_chain()
 
     def nose_hoover_chain(self):
-        # TODO check operators order and g_nvt calculation
         scale, time_step_divider, n_ys = 1.0, 1, 3
         w = self.get_w(n_ys=n_ys)
 
@@ -113,7 +112,7 @@ class MTK:
             self,
             system_kinetic_energy: float,
     ):
-        # TODO get right pressure and volume values.
+        # TODO check density value
         cell_volume = self.static.get_cell_volume()
         internal_pressure = self.dynamic.get_pressure(
             cell_volume=cell_volume,

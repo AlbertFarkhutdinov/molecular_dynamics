@@ -47,5 +47,5 @@ if __name__ == '__main__':
     main(
         config_filename=CONFIG_FILE_NAME,
         is_initially_frozen=False,
-        is_with_isotherms=False,
+        is_with_isotherms=True,
     )
