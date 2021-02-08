@@ -4,6 +4,8 @@ from scripts.helpers import get_empty_float_scalars
 from scripts.numba_procedures import get_static_structure_factors, get_unique_ssf
 from scripts.saver import Saver
 
+from datetime import datetime
+
 
 class StaticStructureFactor:
 
@@ -18,7 +20,7 @@ class StaticStructureFactor:
         self.layer_thickness = layer_thickness
         self.ensembles_number = ensembles_number
         self.wave_numbers_range = np.arange(0, max_wave_number + 1, self.layer_thickness)
-        _components_range = np.arange(max_wave_number, dtype=np.float32)
+        _components_range = np.arange(max_wave_number + 1, dtype=np.float32)
         self.all_wave_vectors = np.array([
             [i, j, k]
             for i in _components_range
@@ -39,11 +41,13 @@ class StaticStructureFactor:
         wave_numbers, static_structure_factors = get_unique_ssf(
             wave_numbers=self.all_wave_numbers,
             static_structure_factors=static_structure_factors,
+            layer_thickness=self.layer_thickness,
         )
         k_hist = np.histogram(
             wave_numbers,
             self.wave_numbers_range
         )[0]
+        # TODO shapes
         self.ssf[:k_hist.size][k_hist != 0] += static_structure_factors
 
     def normalize(self):

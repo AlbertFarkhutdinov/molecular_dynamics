@@ -26,6 +26,6 @@
   "isotherm_parameters": {
     "isotherm_saving_step": 5000,
     "equilibration_steps": 500,
-    "ensembles_number": 1000
+    "ensembles_number": 1500
   }
 }

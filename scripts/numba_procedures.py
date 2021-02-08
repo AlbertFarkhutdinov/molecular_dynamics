@@ -1,8 +1,8 @@
-from numba import njit, prange
+import numba as nb
 import numpy as np
 
 
-@njit
+@nb.njit
 def math_round(value):
     rest = value - int(value)
     if rest >= 0.5 and value >= 0:
@@ -12,11 +12,43 @@ def math_round(value):
     return float(int(value))
 
 
-@njit
+@nb.njit
+def vec_sum(vec1, vec2, result):
+    """Calculate the sum of two 3d vectors and store the result in the third parameter."""
+    result[0] = vec1[0] + vec2[0]
+    result[1] = vec1[1] + vec2[1]
+    result[2] = vec1[2] + vec2[2]
+
+
+@nb.njit
+def vec_sub(vec1, vec2, result):
+    """Calculate the sum of two 3d vectors and store the result in the third parameter."""
+    result[0] = vec1[0] - vec2[0]
+    result[1] = vec1[1] - vec2[1]
+    result[2] = vec1[2] - vec2[2]
+
+
+@nb.njit
+def vec_mul_1(vec, scalar, result):
+    """Calculate the sum of two 3d vectors and store the result in the third parameter."""
+    result[0] = vec[0] * scalar
+    result[1] = vec[1] * scalar
+    result[2] = vec[2] * scalar
+
+
+@nb.njit
+def vec_mul_3(vec1, vec2, result):
+    """Calculate the sum of two 3d vectors and store the result in the third parameter."""
+    result[0] = vec1[0] * vec2[0]
+    result[1] = vec1[1] * vec2[1]
+    result[2] = vec1[2] * vec2[2]
+
+
+@nb.njit
 def get_radius_vector(index_1, index_2, positions, cell_dimensions):
     radius_vector = positions[index_1] - positions[index_2]
     distance_squared = 0
-    for k in prange(3):
+    for k in nb.prange(3):
         if radius_vector[k] < -cell_dimensions[k] / 2 or radius_vector[k] >= cell_dimensions[k] / 2:
             radius_vector[k] -= math_round(radius_vector[k] / cell_dimensions[k]) * cell_dimensions[k]
         distance_squared += radius_vector[k] * radius_vector[k]
@@ -30,27 +62,27 @@ def get_radius_vector(index_1, index_2, positions, cell_dimensions):
     return radius_vector, distance_squared ** 0.5
 
 
-@njit
+@nb.njit
 def get_interparticle_distances(positions, distances, cell_dimensions):
-    for i in prange(len(distances[0]) - 1):
-        for j in prange(i + 1, len(distances[0])):
+    for i in nb.prange(len(distances[0]) - 1):
+        for j in nb.prange(i + 1, len(distances[0])):
             distance = 0
-            radius_vector = positions[i] - positions[j]
-            for k in prange(3):
-                if radius_vector[k] < -cell_dimensions[k] / 2 or radius_vector[k] >= cell_dimensions[k] / 2:
-                    radius_vector[k] -= math_round(radius_vector[k] / cell_dimensions[k]) * cell_dimensions[k]
-                distance += radius_vector[k] * radius_vector[k]
+            for k in nb.prange(3):
+                component = positions[i][k] - positions[j][k]
+                if component < -cell_dimensions[k] / 2 or component >= cell_dimensions[k] / 2:
+                    component -= math_round(component / cell_dimensions[k]) * cell_dimensions[k]
+                distance += component * component
             distances[i, j] = distance ** 0.5
     return distances
 
 
-@njit
+@nb.njit
 def get_radius_vectors(positions, radius_vectors, cell_dimensions, distances):
-    for i in prange(len(radius_vectors[0]) - 1):
-        for j in prange(i + 1, len(radius_vectors[0])):
+    for i in nb.prange(len(radius_vectors[0]) - 1):
+        for j in nb.prange(i + 1, len(radius_vectors[0])):
             distance = 0
             radius_vector = positions[i] - positions[j]
-            for k in prange(3):
+            for k in nb.prange(3):
                 if radius_vector[k] < -cell_dimensions[k] / 2 or radius_vector[k] >= cell_dimensions[k] / 2:
                     radius_vector[k] -= math_round(radius_vector[k] / cell_dimensions[k]) * cell_dimensions[k]
                 distance += radius_vector[k] * radius_vector[k]
@@ -59,20 +91,20 @@ def get_radius_vectors(positions, radius_vectors, cell_dimensions, distances):
     return radius_vectors, distances
 
 
-@njit
+@nb.njit
 def get_time_displacements(positions_1, positions_2, distances):
-    for i in prange(len(distances[0]) - 1):
-        for j in prange(i + 1, len(distances[0])):
+    for i in nb.prange(len(distances[0]) - 1):
+        for j in nb.prange(i + 1, len(distances[0])):
             distance = 0
-            radius_vector = positions_1[i] - positions_2[j]
-            for k in prange(3):
-                distance += radius_vector[k] * radius_vector[k]
+            for k in nb.prange(3):
+                component = positions_1[i][k] - positions_2[j][k]
+                distance += component * component
 
             distances[i, j] = distance ** 0.5
     return distances
 
 
-@njit
+@nb.njit
 def lf_cycle(
         particles_number,
         all_neighbours,
@@ -86,8 +118,8 @@ def lf_cycle(
         cell_dimensions,
 ):
     virial = 0
-    for i in prange(particles_number - 1):
-        for k in prange(
+    for i in nb.prange(particles_number - 1):
+        for k in nb.prange(
                 first_neighbours[i],
                 last_neighbours[i] + 1,
         ):
@@ -113,7 +145,7 @@ def lf_cycle(
     return virial
 
 
-@njit
+@nb.njit
 def update_list_cycle(
         rng: float,
         advances: np.ndarray,
@@ -125,8 +157,8 @@ def update_list_cycle(
         last_neighbours: np.ndarray,
 ):
     k = 1
-    for i in prange(particles_number - 1):
-        for j in prange(i + 1, particles_number):
+    for i in nb.prange(particles_number - 1):
+        for j in nb.prange(i + 1, particles_number):
             radius_vector, distance = get_radius_vector(
                 index_1=i,
                 index_2=j,
@@ -145,35 +177,42 @@ def update_list_cycle(
         last_neighbours[i] = k - 1
 
 
-@njit
+@nb.njit(fastmath=True)
 def get_static_structure_factors(wave_vectors, static_radius_vectors, particles_number):
     _static_structure_factors = []
-    for vector in wave_vectors:
-        _static_structure_factors.append((
-                np.cos((vector * static_radius_vectors).sum(axis=1)).sum()
-                / particles_number
-        ))
-    return np.array(_static_structure_factors, dtype=np.float32)
+    for i in nb.prange(wave_vectors.shape[0]):
+        if wave_vectors[i][0] == wave_vectors[i][1] == wave_vectors[i][2] == 0:
+            item = static_radius_vectors.shape[0]
+        else:
+            item = 0
+            for j in nb.prange(static_radius_vectors.shape[0]):
+                angle = 0
+                for k in nb.prange(3):
+                    angle = angle + wave_vectors[i][k] * static_radius_vectors[j][k]
+
+                item += np.cos(angle)
+        _static_structure_factors.append(item / particles_number)
+    return np.array(_static_structure_factors, dtype=np.float64)
 
 
-@njit
-def get_unique_ssf(wave_numbers, static_structure_factors):
+@nb.njit
+def get_unique_ssf(wave_numbers, static_structure_factors, layer_thickness):
     _wave_numbers = []
     for number in wave_numbers:
         if round(number, 6) not in _wave_numbers:
             _wave_numbers.append(round(number, 6))
 
     _static_structure_factors = np.zeros(len(_wave_numbers))
-    for i in prange(len(_wave_numbers)):
-        for j in prange(len(wave_numbers)):
-            if wave_numbers[j] == _wave_numbers[i]:
+    for i in nb.prange(len(_wave_numbers)):
+        for j in nb.prange(len(wave_numbers)):
+            if abs(wave_numbers[j] - _wave_numbers[i]) < layer_thickness:
                 _static_structure_factors[i] += static_structure_factors[j]
 
     _wave_numbers = np.array(_wave_numbers)
     return _wave_numbers, _static_structure_factors
 
 
-@njit
+@nb.njit
 def get_boundary_conditions(
         cell_dimensions: np.ndarray,
         particles_number: int,

@@ -3,7 +3,7 @@ from time import time
 from scripts.log_config import log_debug_info
 from scripts.radial_density_function import RadialDensityFunction
 from scripts.transport_properties import TransportProperties
-# from scripts.static_structure_factor import StaticStructureFactor
+from scripts.static_structure_factor import StaticStructureFactor
 
 
 class Isotherm:
@@ -30,12 +30,12 @@ class Isotherm:
         self.transport_properties = TransportProperties(
             sample=self.sample,
         )
-        # self.ssf = StaticStructureFactor(
-        #     sample=self.sample,
-        #     max_wave_number=5,
-        #     ensembles_number=self.ensembles_number,
-        #     layer_thickness=0.01 * layer_thickness,
-        # )
+        self.ssf = StaticStructureFactor(
+            sample=self.sample,
+            max_wave_number=4,
+            ensembles_number=self.ensembles_number,
+            layer_thickness=0.01 * layer_thickness,
+        )
 
     def print_current_state(self, step):
         temperature = self.sample.dynamic.temperature()
@@ -66,10 +66,10 @@ class Isotherm:
                 self.transport_properties.init_ensembles()
                 self.sample.dynamic.calculate_interparticle_vectors()
                 self.rdf.accumulate()
-                # self.ssf.accumulate()
+                self.ssf.accumulate()
 
             self.transport_properties.acccumulate()
         self.transport_properties.save()
         self.rdf.save()
-        # self.ssf.save()
+        self.ssf.save()
         print(f'Calculation completed. Time of calculation: {time() - self.start} seconds.')
