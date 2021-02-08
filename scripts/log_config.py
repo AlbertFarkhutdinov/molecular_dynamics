@@ -43,7 +43,7 @@ def logger_wraps(*, is_entry=True, is_exit=True, level="DEBUG"):
     return wrapper
 
 
-def debug_info(*args, **kwargs):
+def log_debug_info(*args, **kwargs):
     if IS_LOGGED:
         logger.opt(lazy=True).debug(*args, **kwargs)
 
@@ -51,7 +51,11 @@ def debug_info(*args, **kwargs):
 if IS_LOGGED:
     logger.remove()
     logger.add(
-        join(PATH_TO_DATA, f'log_{date.today()}.log'),
+        join(
+            PATH_TO_DATA,
+            str(date.today()),
+            f'log_{date.today()}.log',
+        ),
         format="{time:YYYY-MM-dd HH:mm:ss,SSS} | {level} | {message}",
         level="DEBUG",
         rotation='00:00',

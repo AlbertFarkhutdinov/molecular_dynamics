@@ -1,13 +1,25 @@
-import numba
+from numba import njit, prange
 import numpy as np
 
 
-@numba.jit(nopython=True)
+@njit
+def math_round(value):
+    rest = value - int(value)
+    if rest >= 0.5 and value >= 0:
+        return float(int(value) + 1)
+    elif rest <= -0.5 and value < 0:
+        return float(int(value) - 1)
+    return float(int(value))
+
+
+@njit
 def get_radius_vector(index_1, index_2, positions, cell_dimensions):
     radius_vector = positions[index_1] - positions[index_2]
-    for k in range(3):
+    distance_squared = 0
+    for k in prange(3):
         if radius_vector[k] < -cell_dimensions[k] / 2 or radius_vector[k] >= cell_dimensions[k] / 2:
-            radius_vector[k] -= round(radius_vector[k] / cell_dimensions[k] + 1e-5) * cell_dimensions[k]
+            radius_vector[k] -= math_round(radius_vector[k] / cell_dimensions[k]) * cell_dimensions[k]
+        distance_squared += radius_vector[k] * radius_vector[k]
 
     assert (
             -(cell_dimensions[0] / 2) <= radius_vector[0] < (cell_dimensions[0] / 2)
@@ -15,15 +27,57 @@ def get_radius_vector(index_1, index_2, positions, cell_dimensions):
             or -(cell_dimensions[2] / 2) <= radius_vector[2] < (cell_dimensions[2] / 2)
     )
 
-    return radius_vector
+    return radius_vector, distance_squared ** 0.5
 
 
-@numba.jit(nopython=True)
+@njit
+def get_interparticle_distances(positions, distances, cell_dimensions):
+    for i in prange(len(distances[0]) - 1):
+        for j in prange(i + 1, len(distances[0])):
+            distance = 0
+            radius_vector = positions[i] - positions[j]
+            for k in prange(3):
+                if radius_vector[k] < -cell_dimensions[k] / 2 or radius_vector[k] >= cell_dimensions[k] / 2:
+                    radius_vector[k] -= math_round(radius_vector[k] / cell_dimensions[k]) * cell_dimensions[k]
+                distance += radius_vector[k] * radius_vector[k]
+            distances[i, j] = distance ** 0.5
+    return distances
+
+
+@njit
+def get_radius_vectors(positions, radius_vectors, cell_dimensions, distances):
+    for i in prange(len(radius_vectors[0]) - 1):
+        for j in prange(i + 1, len(radius_vectors[0])):
+            distance = 0
+            radius_vector = positions[i] - positions[j]
+            for k in prange(3):
+                if radius_vector[k] < -cell_dimensions[k] / 2 or radius_vector[k] >= cell_dimensions[k] / 2:
+                    radius_vector[k] -= math_round(radius_vector[k] / cell_dimensions[k]) * cell_dimensions[k]
+                distance += radius_vector[k] * radius_vector[k]
+            distances[i, j] = distance ** 0.5
+            radius_vectors[i, j] = radius_vector
+    return radius_vectors, distances
+
+
+@njit
+def get_time_displacements(positions_1, positions_2, distances):
+    for i in prange(len(distances[0]) - 1):
+        for j in prange(i + 1, len(distances[0])):
+            distance = 0
+            radius_vector = positions_1[i] - positions_2[j]
+            for k in prange(3):
+                distance += radius_vector[k] * radius_vector[k]
+
+            distances[i, j] = distance ** 0.5
+    return distances
+
+
+@njit
 def lf_cycle(
         particles_number,
-        verlet_list,
-        marker_1,
-        marker_2,
+        all_neighbours,
+        first_neighbours,
+        last_neighbours,
         r_cut,
         potential_table,
         potential_energies,
@@ -32,82 +86,103 @@ def lf_cycle(
         cell_dimensions,
 ):
     virial = 0
-    for i in range(particles_number - 1):
-        for k in range(
-                marker_1[i],
-                marker_2[i] + 1,
+    for i in prange(particles_number - 1):
+        for k in prange(
+                first_neighbours[i],
+                last_neighbours[i] + 1,
         ):
-            j = verlet_list[k]
-            radius_vector = get_radius_vector(
+            j = all_neighbours[k]
+            radius_vector, distance = get_radius_vector(
                 index_1=i,
                 index_2=j,
                 positions=positions,
                 cell_dimensions=cell_dimensions
             )
-            distance_squared = (radius_vector ** 2).sum()
-            if distance_squared ** 0.5 < 0.5:
-                print(i, j, positions[i], positions[j], radius_vector)
-            if distance_squared < r_cut * r_cut:
-                table_row = int((distance_squared ** 0.5 - 0.5) / 0.0001)
+            if distance < r_cut:
+                table_row = int(math_round((distance - 0.5) / 0.0001))
                 potential_ij = potential_table[table_row - 1, 0]
                 force_ij = potential_table[table_row - 1, 1]
                 potential_energies[i] += potential_ij / 2.0
                 potential_energies[j] += potential_ij / 2.0
-                virial += force_ij * distance_squared
                 acceleration_ij = force_ij * radius_vector
+                virial += force_ij * distance * distance / 2
                 accelerations[i] += acceleration_ij
                 accelerations[j] -= acceleration_ij
-                assert table_row >= 1
+                # assert table_row >= 1
+
     return virial
 
 
-@numba.jit(nopython=True)
+@njit
 def update_list_cycle(
         rng: float,
         advances: np.ndarray,
         particles_number: int,
         positions: np.ndarray,
         cell_dimensions: np.ndarray,
-        marker_1: np.ndarray,
-        marker_2: np.ndarray,
-        verlet_list: np.ndarray,
+        all_neighbours: np.ndarray,
+        first_neighbours: np.ndarray,
+        last_neighbours: np.ndarray,
 ):
     k = 1
-    for i in range(particles_number - 1):
-        for j in range(i + 1, particles_number):
-            radius_vector = get_radius_vector(
+    for i in prange(particles_number - 1):
+        for j in prange(i + 1, particles_number):
+            radius_vector, distance = get_radius_vector(
                 index_1=i,
                 index_2=j,
                 positions=positions,
                 cell_dimensions=cell_dimensions
             )
-            distance_squared = (radius_vector ** 2).sum()
-            if distance_squared < rng * rng:
+            if distance < rng:
                 advances[j] = 1
             else:
                 advances[j] = 0
 
-        marker_1[i] = k
+        first_neighbours[i] = k
         for j in range(i + 1, particles_number):
-            verlet_list[k] = j
+            all_neighbours[k] = j
             k = k + advances[j]
-        marker_2[i] = k - 1
+        last_neighbours[i] = k - 1
 
 
-@numba.jit(nopython=True)
-def get_interparticle_distances(positions, distances, cell_dimensions):
-    for i in range(len(distances[0]) - 1):
-        for j in range(i + 1, len(distances[0])):
-            distance = 0
-            radius_vector = positions[i] - positions[j]
-            for k in range(3):
-                if radius_vector[k] < -cell_dimensions[k] / 2 or radius_vector[k] >= cell_dimensions[k] / 2:
-                    radius_vector[k] -= round(radius_vector[k] / cell_dimensions[k] + 1e-5) * cell_dimensions[k]
-                distance += radius_vector[k] * radius_vector[k]
-            assert (
-                    -(cell_dimensions[0] / 2) <= radius_vector[0] < (cell_dimensions[0] / 2)
-                    or -(cell_dimensions[1] / 2) <= radius_vector[1] < (cell_dimensions[1] / 2)
-                    or -(cell_dimensions[2] / 2) <= radius_vector[2] < (cell_dimensions[2] / 2)
-            )
-            distances[i, j] = distance ** 0.5
-    return distances
+@njit
+def get_static_structure_factors(wave_vectors, static_radius_vectors, particles_number):
+    _static_structure_factors = []
+    for vector in wave_vectors:
+        _static_structure_factors.append((
+                np.cos((vector * static_radius_vectors).sum(axis=1)).sum()
+                / particles_number
+        ))
+    return np.array(_static_structure_factors, dtype=np.float32)
+
+
+@njit
+def get_unique_ssf(wave_numbers, static_structure_factors):
+    _wave_numbers = []
+    for number in wave_numbers:
+        if round(number, 6) not in _wave_numbers:
+            _wave_numbers.append(round(number, 6))
+
+    _static_structure_factors = np.zeros(len(_wave_numbers))
+    for i in prange(len(_wave_numbers)):
+        for j in prange(len(wave_numbers)):
+            if wave_numbers[j] == _wave_numbers[i]:
+                _static_structure_factors[i] += static_structure_factors[j]
+
+    _wave_numbers = np.array(_wave_numbers)
+    return _wave_numbers, _static_structure_factors
+
+
+@njit
+def get_boundary_conditions(
+        cell_dimensions: np.ndarray,
+        particles_number: int,
+        positions: np.ndarray,
+):
+    for i in range(particles_number):
+        for j in range(3):
+            if positions[i][j] >= cell_dimensions[j] / 2.0:
+                positions[i][j] -= math_round(positions[i][j] / cell_dimensions[j]) * cell_dimensions[j]
+            if positions[i][j] < -cell_dimensions[j] / 2.0:
+                positions[i][j] -= math_round(positions[i][j] / cell_dimensions[j]) * cell_dimensions[j]
+    return positions

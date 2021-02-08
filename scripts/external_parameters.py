@@ -1,15 +1,20 @@
+import numpy as np
+
+
 class ExternalParameters:
 
     def __init__(
             self,
-            temperature: float,
             heating_velocity: float,
             environment_type: str,
+            temperature: float,
             pressure: float = None,
-            **environment_parameters,
+            **kwargs,
     ):
         self.temperature = temperature
         self.pressure = pressure
         self.heating_velocity = heating_velocity
-        if environment_type == 'nose_hoover':
-            self.parameters = environment_parameters
+        self.environment_type = environment_type
+        if self.environment_type in ('nose_hoover', 'mtk'):
+            self.thermostat_parameters = np.array(kwargs.get('thermostat_parameters'))
+            self.barostat_parameter = kwargs.get('barostat_parameter')

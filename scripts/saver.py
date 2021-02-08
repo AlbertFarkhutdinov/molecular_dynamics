@@ -1,13 +1,13 @@
 from datetime import datetime
-from os.path import join
+from os import mkdir
+from os.path import exists, join
 
-import numpy as np
-from pandas import DataFrame
+import pandas as pd
 
 from scripts.constants import PATH_TO_DATA
 from scripts.dynamic_parameters import SystemDynamicParameters
 from scripts.modeling_parameters import ModelingParameters
-from scripts.helpers import get_empty_vectors, get_formatted_time
+from scripts.helpers import get_formatted_time, get_date
 from scripts.static_parameters import SystemStaticParameters
 
 
@@ -30,70 +30,50 @@ class Saver:
         self.lammps_configurations = lammps_configurations or []
         self.configuration_storing_step = configuration_storing_step
         self.configuration_saving_step = configuration_saving_step
+        self.date_folder = join(
+            PATH_TO_DATA,
+            get_date(),
+        )
+        if not exists(self.date_folder):
+            mkdir(self.date_folder)
 
     def save_configuration(self, file_name: str = None):
-        file_name = join(
-            PATH_TO_DATA,
-            file_name or f'system_config_{get_formatted_time()}.txt'
+        _start = datetime.now()
+        _file_name = join(
+            self.date_folder,
+            file_name or 'system_configuration.csv',
         )
-        with open(file_name, mode='w', encoding='utf-8') as file:
-            lines = [
-                '\n'.join(self.static.cell_dimensions.astype(str)),
-                str(self.static.particles_number),
-                str(self.model.time),
-                *[
-                    f'{pos[0]} {pos[1]} {pos[2]}'
-                    for i, pos in enumerate(self.dynamic.positions)
-                ],
-                *[
-                    f'{vel[0]} {vel[1]} {vel[2]}'
-                    for i, vel in enumerate(self.dynamic.velocities)
-                ],
-                *[
-                    f'{acc[0]} {acc[1]} {acc[2]}'
-                    for i, acc in enumerate(self.dynamic.accelerations)
-                ],
-            ]
-            file.write('\n'.join(lines))
+        positions = pd.DataFrame(
+            self.dynamic.positions,
+            columns=['x', 'y', 'z'],
+        )
+        velocities = pd.DataFrame(
+            self.dynamic.velocities,
+            columns=['v_x', 'v_y', 'v_z'],
+        )
+        accelerations = pd.DataFrame(
+            self.dynamic.accelerations,
+            columns=['a_x', 'a_y', 'a_z'],
+        )
+        configuration = pd.concat([positions, velocities, accelerations], axis=1)
+        configuration[['L_x', 'L_y', 'L_z']] = self.static.cell_dimensions
+        configuration['particles_number'] = self.static.particles_number
+        configuration['time'] = self.model.time
 
-    def load_saved_configuration(self, file_name: str = None):
-        file_name = join(PATH_TO_DATA, file_name or 'system_config.txt')
-        with open(file_name, mode='r', encoding='utf-8') as file:
-            lines = file.readlines()
-            lines = [line.rstrip() for line in lines]
-            self.static.cell_dimensions = np.array(lines[:3], dtype=np.float)
-            self.static.particles_number = int(lines[3])
-            self.model.time = float(lines[4])
-            self.dynamic.positions = get_empty_vectors(self.static.particles_number)
-            self.dynamic.velocities = get_empty_vectors(self.static.particles_number)
-            self.dynamic.accelerations = get_empty_vectors(self.static.particles_number)
-            for i in range(self.static.particles_number):
-                self.dynamic.positions[i] = np.array(
-                    lines[5 + i].split(),
-                    dtype=np.float,
-                )
-                self.dynamic.velocities[i] = np.array(
-                    lines[5 + i + self.static.particles_number].split(),
-                    dtype=np.float,
-                )
-                self.dynamic.velocities[i] = np.array(
-                    lines[5 + i + 2 * self.static.particles_number].split(),
-                    dtype=np.float,
-                )
+        configuration.to_csv(
+            _file_name,
+            sep=';',
+            index=False,
+        )
+        print(f'System configuration is saved. Time of saving: {datetime.now() - _start}')
 
     def update_system_parameters(
             self,
             system_parameters: dict,
-            potential_energy: float,
-            temperature: float,
-            pressure: float,
-            system_kinetic_energy: float,
+            parameters: dict,
     ):
-        system_parameters['temperature'][self.step - 1] = temperature
-        system_parameters['pressure'][self.step - 1] = pressure
-        system_parameters['kinetic_energy'][self.step - 1] = system_kinetic_energy
-        system_parameters['potential_energy'][self.step - 1] = potential_energy
-        system_parameters['total_energy'][self.step - 1] = system_kinetic_energy + potential_energy
+        for key, value in parameters.items():
+            system_parameters[key][self.step - 1] = value
 
     def get_lammps_trajectory(self):
         lines = [
@@ -128,7 +108,7 @@ class Saver:
     ):
         _start = datetime.now()
         file_name = join(
-            PATH_TO_DATA,
+            self.date_folder,
             file_name or f'system_config.txt'
         )
         is_saved = False
@@ -147,16 +127,19 @@ class Saver:
             )
             self.lammps_configurations = []
 
-    @staticmethod
     def save_dict(
+            self,
             data: dict,
             default_file_name: str,
             data_name: str,
             file_name: str = None,
     ):
         _start = datetime.now()
-        _file_name = join(PATH_TO_DATA, file_name or default_file_name)
-        DataFrame(data).to_csv(
+        _file_name = join(
+            self.date_folder,
+            file_name or default_file_name,
+        )
+        pd.DataFrame(data).to_csv(
             _file_name,
             sep=';',
             index=False,
@@ -182,7 +165,7 @@ class Saver:
     ):
         self.save_dict(
             data=rdf_data,
-            default_file_name=f'rdf_file_{get_formatted_time()}.csv',
+            default_file_name=f'rdf_{get_formatted_time()}.csv',
             data_name='RDF values',
             file_name=file_name,
         )

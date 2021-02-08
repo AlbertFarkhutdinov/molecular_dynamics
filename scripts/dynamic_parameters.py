@@ -1,10 +1,11 @@
+from copy import deepcopy
+
 import numpy as np
-import numba
-from scipy.spatial.distance import pdist, squareform
 
 from scripts.static_parameters import SystemStaticParameters
 from scripts.helpers import get_empty_vectors
 from scripts.log_config import logger_wraps
+from scripts.numba_procedures import get_radius_vectors, get_boundary_conditions
 
 
 class SystemDynamicParameters:
@@ -18,11 +19,12 @@ class SystemDynamicParameters:
         self.particles_number = static.particles_number
         self.cell_dimensions = static.cell_dimensions
         self.positions = get_empty_vectors(self.particles_number)
+        self.first_positions = get_empty_vectors(self.particles_number)
+        self.first_velocities = get_empty_vectors(self.particles_number)
         self.velocities = get_empty_vectors(self.particles_number)
-        self.v = get_empty_vectors(self.particles_number)
-        self.vo = get_empty_vectors(self.particles_number)
-        self.b = get_empty_vectors(self.particles_number)
         self.accelerations = get_empty_vectors(self.particles_number)
+        self.virial = 0.0
+        self.potential_energy = 0.0
         if self.static.init_type == 1:
             self.generate_ordered_state()
         elif self.static.init_type == 2:
@@ -30,6 +32,22 @@ class SystemDynamicParameters:
         if temperature:
             self.get_initial_velocities(temperature=temperature)
         self.displacements = get_empty_vectors(self.particles_number)
+        self.interparticle_vectors = np.zeros(
+            (self.particles_number, self.particles_number, 3),
+            dtype=np.float32,
+        )
+        self.interparticle_distances = np.zeros(
+            (self.particles_number, self.particles_number),
+            dtype=np.float32,
+        )
+
+    def calculate_interparticle_vectors(self):
+        self.interparticle_vectors, self.interparticle_distances = get_radius_vectors(
+            radius_vectors=self.interparticle_vectors,
+            positions=self.positions,
+            cell_dimensions=self.cell_dimensions,
+            distances=self.interparticle_distances,
+        )
 
     def get_initial_velocities(self, temperature: float) -> None:
         np.random.seed(0)
@@ -68,6 +86,7 @@ class SystemDynamicParameters:
 
     @logger_wraps()
     def generate_random_state(self) -> None:
+        # TODO raises AssertionError
         np.random.seed(0)
         self.positions[0] = np.random.random(3) * self.static.cell_dimensions
         for j in range(1, self.static.particles_number):
@@ -75,7 +94,6 @@ class SystemDynamicParameters:
             while is_distance_too_small:
                 self.positions[j] = np.random.random(3) * self.static.cell_dimensions
                 for i in range(j):
-                    # radius_vector = np.mod(self.positions[i] - self.positions[j], self.cell_dimensions)
                     radius_vector = self.positions[i] - self.positions[j]
                     radius_vector -= (radius_vector / self.cell_dimensions).astype(np.int32) * self.cell_dimensions
                     distance = (radius_vector ** 2).sum()
@@ -90,27 +108,18 @@ class SystemDynamicParameters:
         _system_kinetic_energy = system_kinetic_energy or self.system_kinetic_energy
         return 2.0 * _system_kinetic_energy / 3.0 / self.particles_number
 
-    @property
-    def interparticle_distances(self):
-        return squareform(
-            pdist(self.positions, 'euclidean')
-        )
-
-    @staticmethod
-    @numba.jit(nopython=True)
-    def _interparticle_distances(positions):
-        return pdist(positions, 'euclidean')
-
     def get_pressure(
             self,
-            virial: float,
-            temperature: float,
+            virial: float = None,
+            temperature: float = None,
             density: float = None,
             cell_volume: float = None,
     ) -> float:
+        _virial = virial or self.virial
+        _temperature = temperature or self.temperature()
         _density = density or self.static.get_density()
         _cell_volume = cell_volume or self.static.get_cell_volume()
-        return _density * temperature + virial / (3 * _cell_volume)
+        return _density * _temperature + _virial / (3 * _cell_volume)
 
     @property
     def system_center(self):
@@ -146,52 +155,24 @@ class SystemDynamicParameters:
         )
 
     @logger_wraps()
-    def boundary_conditions(self) -> None:
-        self._boundary_conditions(
+    def boundary_conditions(self, positions=None) -> None:
+        _positions = self.positions if positions is None else positions
+        get_boundary_conditions(
             cell_dimensions=self.cell_dimensions,
             particles_number=self.particles_number,
-            positions=self.positions
+            positions=_positions,
         )
 
-    @staticmethod
-    @numba.jit(nopython=True)
-    def _boundary_conditions(
-            cell_dimensions: np.ndarray,
-            particles_number: int,
-            positions: np.ndarray,
-    ):
-        for i in range(particles_number):
-            for j in range(3):
-                if positions[i][j] >= cell_dimensions[j] / 2.0:
-                    # print(i, j, positions[i])
-                    positions[i][j] -= cell_dimensions[j]
-                    # print(i, j, positions[i])
-                if positions[i][j] < -cell_dimensions[j] / 2.0:
-                    # print(i, j, positions[i])
-                    positions[i][j] += cell_dimensions[j]
-                    # print(i, j, positions[i])
+    def get_msd(self, previous_positions):
+        return ((self.positions - previous_positions) ** 2).sum() / self.particles_number
 
-    def distance_refold(self):
-        for i in range(self.particles_number - 1):
-            for j in range(i + 1, self.particles_number):
-                # radius_vector = np.mod(self.get_radius_vector(i, j), self.cell_dimensions)
-                radius_vector = self.get_radius_vector(i, j)
-                radius_vector -= (radius_vector / self.cell_dimensions).astype(np.int) * self.cell_dimensions
-
-    def get_radius_vector(self, index_1: int, index_2):
-        return self.positions[index_1] - self.positions[index_2]
-
-    @staticmethod
-    @numba.njit(numba.float64(numba.float64[:]))
-    def _get_distance(radius_vector):
-        return np.linalg.norm(radius_vector)
-
-    def get_distance(
-            self,
-            index_1: int,
-            index_2: int,
-    ):
-        # radius_vector = np.mod(self.positions[index_1] - self.positions[index_2], self.cell_dimensions)
-        radius_vector = self.positions[index_1] - self.positions[index_2]
-        radius_vector -= (radius_vector / self.cell_dimensions).astype(numba.int32) * self.cell_dimensions
-        return (radius_vector ** 2).sum()
+    def get_volume(self):
+        _positions = deepcopy(self.positions)
+        _positions = get_boundary_conditions(
+            cell_dimensions=self.cell_dimensions,
+            particles_number=self.particles_number,
+            positions=_positions,
+        )
+        linear_dimensions = np.max(_positions, axis=0) - np.min(_positions, axis=0)
+        _volume = np.max(linear_dimensions) ** 3
+        return _volume
