@@ -229,6 +229,7 @@ class MolecularDynamics:
                 potential_table=self.potential.potential_table,
                 step=step,
                 system_parameters=system_parameters,
+                is_pbc_switched_on=True,
             )
             print_info(
                 step=step,
