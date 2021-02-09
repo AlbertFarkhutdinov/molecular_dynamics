@@ -47,19 +47,21 @@ def vec_mul_3(vec1, vec2, result):
 @nb.njit
 def get_radius_vector(index_1, index_2, positions, cell_dimensions):
     radius_vector = positions[index_1] - positions[index_2]
-    distance_squared = 0
-    for k in nb.prange(3):
-        if radius_vector[k] < -cell_dimensions[k] / 2 or radius_vector[k] >= cell_dimensions[k] / 2:
-            radius_vector[k] -= math_round(radius_vector[k] / cell_dimensions[k]) * cell_dimensions[k]
-        distance_squared += radius_vector[k] * radius_vector[k]
+    if radius_vector[0] < -cell_dimensions[0] / 2 or radius_vector[0] >= cell_dimensions[0] / 2:
+        radius_vector[0] -= math_round(radius_vector[0] / cell_dimensions[0]) * cell_dimensions[0]
+    if radius_vector[0] < -cell_dimensions[0] / 2 or radius_vector[0] >= cell_dimensions[0] / 2:
+        radius_vector[0] -= math_round(radius_vector[0] / cell_dimensions[0]) * cell_dimensions[0]
+    if radius_vector[1] < -cell_dimensions[1] / 2 or radius_vector[1] >= cell_dimensions[1] / 2:
+        radius_vector[1] -= math_round(radius_vector[1] / cell_dimensions[1]) * cell_dimensions[1]
+    if radius_vector[2] < -cell_dimensions[2] / 2 or radius_vector[2] >= cell_dimensions[2] / 2:
+        radius_vector[2] -= math_round(radius_vector[2] / cell_dimensions[2]) * cell_dimensions[2]
+    distance_squared = (
+            radius_vector[0] * radius_vector[0]
+            + radius_vector[1] * radius_vector[1]
+            + radius_vector[2] * radius_vector[2]
+    ) ** 0.5
 
-    assert (
-            -(cell_dimensions[0] / 2) <= radius_vector[0] < (cell_dimensions[0] / 2)
-            or -(cell_dimensions[1] / 2) <= radius_vector[1] < (cell_dimensions[1] / 2)
-            or -(cell_dimensions[2] / 2) <= radius_vector[2] < (cell_dimensions[2] / 2)
-    )
-
-    return radius_vector, distance_squared ** 0.5
+    return radius_vector, distance_squared
 
 
 @nb.njit
@@ -177,11 +179,11 @@ def update_list_cycle(
         last_neighbours[i] = k - 1
 
 
-@nb.njit(fastmath=True)
+@nb.njit
 def get_static_structure_factors(wave_vectors, static_radius_vectors, particles_number):
     _static_structure_factors = []
     for i in nb.prange(wave_vectors.shape[0]):
-        if wave_vectors[i][0] == wave_vectors[i][1] == wave_vectors[i][2] == 0:
+        if (wave_vectors[i] == 0).all():
             item = static_radius_vectors.shape[0]
         else:
             item = 0
@@ -198,17 +200,19 @@ def get_static_structure_factors(wave_vectors, static_radius_vectors, particles_
 @nb.njit
 def get_unique_ssf(wave_numbers, static_structure_factors, layer_thickness):
     _wave_numbers = []
-    for number in wave_numbers:
-        if round(number, 6) not in _wave_numbers:
-            _wave_numbers.append(round(number, 6))
-
-    _static_structure_factors = np.zeros(len(_wave_numbers))
-    for i in nb.prange(len(_wave_numbers)):
-        for j in nb.prange(len(wave_numbers)):
-            if abs(wave_numbers[j] - _wave_numbers[i]) < layer_thickness:
-                _static_structure_factors[i] += static_structure_factors[j]
-
+    _static_structure_factors = []
+    _digits = int(np.log10(1 / layer_thickness))
+    for i, number in enumerate(wave_numbers):
+        _number = round(number, _digits)
+        if _number not in _wave_numbers:
+            _wave_numbers.append(_number)
+            _static_structure_factors.append(static_structure_factors[i])
+        else:
+            _static_structure_factors[
+                _wave_numbers.index(_number)
+            ] += static_structure_factors[i]
     _wave_numbers = np.array(_wave_numbers)
+    _static_structure_factors = np.array(_static_structure_factors)
     return _wave_numbers, _static_structure_factors
 
 

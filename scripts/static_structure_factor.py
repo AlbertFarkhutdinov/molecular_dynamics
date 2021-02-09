@@ -47,7 +47,6 @@ class StaticStructureFactor:
             wave_numbers,
             self.wave_numbers_range
         )[0]
-        # TODO shapes
         self.ssf[:k_hist.size][k_hist != 0] += static_structure_factors
 
     def normalize(self):

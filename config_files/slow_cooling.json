@@ -13,7 +13,7 @@
   "modeling_parameters": {
     "iterations_numbers": 40000,
     "time_step": 0.005,
-    "initial_temperature": 2.8
+    "initial_temperature": 1
   },
   "potential_parameters": {
     "potential_type": "lennard_jones",
@@ -26,6 +26,8 @@
   "isotherm_parameters": {
     "isotherm_saving_step": 2500,
     "equilibration_steps": 500,
-    "ensembles_number": 1500
+    "ensembles_number": 1000,
+    "ssf_steps": 5,
+    "ssf_max_wave_number": 1
   }
 }

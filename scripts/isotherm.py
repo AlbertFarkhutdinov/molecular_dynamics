@@ -32,7 +32,7 @@ class Isotherm:
         )
         self.ssf = StaticStructureFactor(
             sample=self.sample,
-            max_wave_number=4,
+            max_wave_number=sample.isotherm_parameters['ssf_max_wave_number'],
             ensembles_number=self.ensembles_number,
             layer_thickness=0.01 * layer_thickness,
         )
@@ -60,13 +60,15 @@ class Isotherm:
                 potential_table=self.sample.potential.potential_table,
                 step=step,
                 is_rdf_calculation=True,
+                is_pbc_switched_on=False,
             )
             self.transport_properties.step = step
             if step <= self.ensembles_number:
                 self.transport_properties.init_ensembles()
                 self.sample.dynamic.calculate_interparticle_vectors()
                 self.rdf.accumulate()
-                self.ssf.accumulate()
+                if step <= self.sample.isotherm_parameters['ssf_steps']:
+                    self.ssf.accumulate()
 
             self.transport_properties.acccumulate()
         self.transport_properties.save()
