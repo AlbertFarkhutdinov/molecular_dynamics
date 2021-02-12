@@ -1,7 +1,7 @@
 from time import time
 
 from scripts.log_config import log_debug_info
-from scripts.radial_density_function import RadialDensityFunction
+from scripts.radial_distribution_function import RadialDistributionFunction
 from scripts.transport_properties import TransportProperties
 from scripts.static_structure_factor import StaticStructureFactor
 
@@ -22,7 +22,7 @@ class Isotherm:
         )
         self.ensembles_number = sample.isotherm_parameters['ensembles_number']
         self.steps_number = 2 * self.ensembles_number - 1
-        self.rdf = RadialDensityFunction(
+        self.rdf = RadialDistributionFunction(
             sample=self.sample,
             layer_thickness=layer_thickness,
             ensembles_number=self.ensembles_number
@@ -71,6 +71,12 @@ class Isotherm:
                     self.ssf.accumulate()
 
             self.transport_properties.acccumulate()
+            _file_name = f'T_{self.sample.verlet.external.temperature:.5f}_dt_{self.sample.model.time_step}.xyz'
+            self.sample.dynamic.save_xyz_file(
+                filename=_file_name,
+                step=step,
+            )
+
         self.transport_properties.save()
         self.rdf.save()
         self.ssf.save()

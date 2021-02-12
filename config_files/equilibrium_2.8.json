@@ -26,6 +26,8 @@
   "isotherm_parameters": {
     "isotherm_saving_step": 5000,
     "equilibration_steps": 500,
-    "ensembles_number": 1000
+    "ensembles_number": 500,
+    "ssf_steps": 0,
+    "ssf_max_wave_number": 10
   }
 }

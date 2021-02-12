@@ -1,9 +1,11 @@
 from copy import deepcopy
+import os
 
 import numpy as np
 
+from scripts.constants import PATH_TO_DATA
 from scripts.static_parameters import SystemStaticParameters
-from scripts.helpers import get_empty_vectors
+from scripts.helpers import get_date, get_empty_vectors
 from scripts.log_config import logger_wraps
 from scripts.numba_procedures import get_radius_vectors, get_boundary_conditions
 
@@ -176,3 +178,38 @@ class SystemDynamicParameters:
         linear_dimensions = np.max(_positions, axis=0) - np.min(_positions, axis=0)
         _volume = np.max(linear_dimensions) ** 3
         return _volume
+
+    def save_xyz_file(self, filename: str, step: int):
+        _path = os.path.join(
+            os.path.join(
+                PATH_TO_DATA,
+                get_date(),
+            ),
+            filename,
+        )
+        _mode = 'a' if os.path.exists(_path) else 'w'
+        with open(_path, mode=_mode, encoding='utf8') as file:
+            file.write(
+                f'{self.particles_number}\n')
+            file.write(f'step: {step} columns: name, pos cell:')
+            file.write(f"{','.join(self.cell_dimensions.astype(str))}\n")
+            for position in self.positions:
+                file.write('A')
+                for i in range(3):
+                    file.write(f'{position[i]:15.6f}')
+                file.write('\n')
+
+
+if __name__ == '__main__':
+    stat_par = {
+        "init_type": 1,
+        "lattice_constant": 1.75,
+        "particles_number": [7, 7, 7],
+        "crystal_type": "гцк"
+    }
+    dynamic = SystemDynamicParameters(
+        static=SystemStaticParameters(**stat_par),
+        temperature=2.8,
+    )
+    dynamic.save_xyz_file('test.xyz', step=1)
+    dynamic.save_xyz_file('test.xyz', step=2)

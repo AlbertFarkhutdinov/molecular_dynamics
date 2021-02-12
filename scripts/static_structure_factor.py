@@ -1,10 +1,10 @@
+from atooms.trajectory import Trajectory
+import atooms.postprocessing as pp
 import numpy as np
 
 from scripts.helpers import get_empty_float_scalars
 from scripts.numba_procedures import get_static_structure_factors, get_unique_ssf
 from scripts.saver import Saver
-
-from datetime import datetime
 
 
 class StaticStructureFactor:
@@ -29,6 +29,18 @@ class StaticStructureFactor:
         ]) * 2 * np.pi / sample.static.cell_dimensions
         self.all_wave_numbers = (self.all_wave_vectors ** 2).sum(axis=1) ** 0.5
         self.ssf = get_empty_float_scalars(self.wave_numbers_range.size)
+
+    def calculate_by_atooms(self, trajectory_file_path):
+        ssf_instance = pp.StructureFactor(
+            Trajectory(trajectory_file_path),
+            # kmin=0.0,
+            # kmax=20.0,
+            # ksamples=1000,
+            # nk=20,
+            # dk=0.1,
+        )
+        ssf_instance.do()
+        return ssf_instance.grid, ssf_instance.value
 
     def accumulate(self):
         static_radius_vectors = self.sample.dynamic.interparticle_vectors
