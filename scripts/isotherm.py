@@ -22,11 +22,11 @@ class Isotherm:
         )
         self.ensembles_number = sample.isotherm_parameters['ensembles_number']
         self.steps_number = 2 * self.ensembles_number - 1
-        # self.rdf = RadialDistributionFunction(
-        #     sample=self.sample,
-        #     layer_thickness=layer_thickness,
-        #     ensembles_number=self.ensembles_number
-        # )
+        self.rdf = RadialDistributionFunction(
+            sample=self.sample,
+            layer_thickness=layer_thickness,
+            ensembles_number=self.ensembles_number
+        )
         self.transport_properties = TransportProperties(
             sample=self.sample,
         )
@@ -66,11 +66,11 @@ class Isotherm:
             if step <= self.ensembles_number:
                 self.transport_properties.init_ensembles()
                 self.sample.dynamic.calculate_interparticle_vectors()
-                # self.rdf.accumulate()
+                self.rdf.accumulate()
                 # if step <= self.sample.isotherm_parameters['ssf_steps']:
                 #     self.ssf.accumulate()
 
-            self.transport_properties.acccumulate()
+            self.transport_properties.accumulate()
             _file_name = f'T_{self.sample.verlet.external.temperature:.5f}_dt_{self.sample.model.time_step}.xyz'
             self.sample.dynamic.save_xyz_file(
                 filename=_file_name,
@@ -78,6 +78,6 @@ class Isotherm:
             )
 
         self.transport_properties.save()
-        # self.rdf.save()
+        self.rdf.save()
         # self.ssf.save()
         print(f'Calculation completed. Time of calculation: {time() - self.start} seconds.')

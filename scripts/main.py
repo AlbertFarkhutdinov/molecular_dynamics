@@ -9,6 +9,7 @@ tau = sigma * sqrt(mass / epsilon) = 2.17E-12 seconds
 velocity = sigma / tau = 1.57E2 m/s
 force = epsilon/sigma = 4.85E-12 newtons
 pressure = epsilon / (sigma ^ 3) = 4.2E7 pascal = 4.2E2 atmospheres
+heating velocity = epsilon / k_B / tau = 0.55E14 K/s
 
 """
 
@@ -29,13 +30,15 @@ def main(
         is_initially_frozen=is_initially_frozen,
         is_with_isotherms=is_with_isotherms
     ).run_md()
+    # TODO postprocessor
 
 
 if __name__ == '__main__':
     # TODO check potential at T = 2.8 (compare 2020-12-17 and the book, p.87)
     np.set_printoptions(threshold=5000)
 
-    CONFIG_FILE_NAME = 'book_chapter_4_stage_1.json'
+    # CONFIG_FILE_NAME = 'book_chapter_4_stage_1.json'
+    CONFIG_FILE_NAME = 'cooling_with_non_constant_velocity.json'
     # CONFIG_FILE_NAME = 'cooling.json'
     # CONFIG_FILE_NAME = 'book_chapter_4_stage_2.json'
     # CONFIG_FILE_NAME = 'slow_cooling.json'

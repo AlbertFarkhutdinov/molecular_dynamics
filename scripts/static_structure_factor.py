@@ -73,5 +73,5 @@ class StaticStructureFactor:
             },
             default_file_name=f'static_structure_factor.csv',
             data_name='Static Structure Factor',
-            file_name=f'static_structure_factor_T_{self.sample.verlet.external.temperature:.5f}.csv'
+            file_name=f'static_structure_factor_T_{self.sample.verlet.external.temperature:.5f}_P_{self.sample.verlet.external.pressure:.5f}_{self.sample.verlet.external.heating_velocity:.8f}.csv'
         )

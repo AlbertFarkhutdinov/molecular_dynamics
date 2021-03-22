@@ -32,7 +32,7 @@ class TransportProperties:
         self.first_velocities[self.step] = deepcopy(self.sample.dynamic.velocities)
         self.data['time'][self.step - 1] = self.sample.model.time_step * self.step
 
-    def acccumulate(self):
+    def accumulate(self):
         first_step = 0 if self.step <= self.ensembles_number else self.step - self.ensembles_number
         for i in range(first_step, self.step):
             self.data['msd'][i] += self.sample.dynamic.get_msd(
@@ -67,5 +67,5 @@ class TransportProperties:
             data=self.data,
             default_file_name=f'transport.csv',
             data_name='MSD and self-diffusion coefficient',
-            file_name=f'transport_T_{self.sample.verlet.external.temperature:.5f}.csv'
+            file_name=f'transport_T_{self.sample.verlet.external.temperature:.5f}_P_{self.sample.verlet.external.pressure:.5f}_{self.sample.verlet.external.heating_velocity:.8f}.csv'
         )

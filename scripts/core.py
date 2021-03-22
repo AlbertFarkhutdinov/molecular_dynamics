@@ -240,7 +240,11 @@ class MolecularDynamics:
             log_debug_info(f'End of step {step}.\n')
 
             if self.is_with_isotherms:
-                if step in (1, 1000) or step % self.isotherm_parameters['isotherm_saving_step'] == 0:
+                isotherm_steps = (
+                    1,
+                    # 1000,
+                )
+                if step in isotherm_steps or step % self.isotherm_parameters['isotherm_saving_step'] == 0:
                     Isotherm(
                         sample=deepcopy(self),
                     ).run()

@@ -54,5 +54,5 @@ class RadialDistributionFunction:
                 'radius': self.radiuses[self.radiuses <= self.sample.static.cell_dimensions[0] / 2.0],
                 'rdf': self.rdf[self.radiuses <= self.sample.static.cell_dimensions[0] / 2.0],
             },
-            file_name=f'rdf_T_{self.sample.verlet.external.temperature:.5f}.csv'
+            file_name=f'rdf_T_{self.sample.verlet.external.temperature:.5f}_P_{self.sample.verlet.external.pressure:.5f}_{self.sample.verlet.external.heating_velocity:.8f}.csv'
         )
