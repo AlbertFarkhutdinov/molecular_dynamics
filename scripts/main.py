@@ -13,7 +13,6 @@ heating velocity = epsilon / k_B / tau = 0.55E14 K/s
 
 """
 
-# from cProfile import run
 
 import numpy as np
 
