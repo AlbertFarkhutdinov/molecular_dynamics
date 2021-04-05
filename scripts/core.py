@@ -36,30 +36,52 @@ class MolecularDynamics:
         with open(_config_filename, encoding='utf8') as file:
             config_parameters = load(file)
 
-        self.model = ModelingParameters(**config_parameters['modeling_parameters'])
-        self.static = SystemStaticParameters(**config_parameters['static_parameters'])
+        self.model = ModelingParameters(**config_parameters[
+            'modeling_parameters'
+        ])
+        self.static = SystemStaticParameters(**config_parameters[
+            'static_parameters'
+        ])
         if 'file_name' in config_parameters['static_parameters']:
             _file_name = join(
                 PATH_TO_DATA,
                 config_parameters['static_parameters']['file_name'],
             )
             configuration = pd.read_csv(_file_name, sep=';')
-            self.static.cell_dimensions = configuration.loc[0, ['L_x', 'L_y', 'L_z']].to_numpy()
-            self.static.particles_number = configuration.loc[0, 'particles_number']
+            self.static.cell_dimensions = configuration.loc[
+                0,
+                ['L_x', 'L_y', 'L_z'],
+            ].to_numpy()
+            self.static.particles_number = configuration.loc[
+                0,
+                'particles_number',
+            ]
             self.dynamic = SystemDynamicParameters(
                 static=self.static,
             )
             self.dynamic.positions = configuration[['x', 'y', 'z']].to_numpy()
-            self.dynamic.velocities = configuration[['v_x', 'v_y', 'v_z']].to_numpy()
-            self.dynamic.accelerations = configuration[['a_x', 'a_y', 'a_z']].to_numpy()
+            self.dynamic.velocities = configuration[
+                ['v_x', 'v_y', 'v_z']
+            ].to_numpy()
+            self.dynamic.accelerations = configuration[
+                ['a_x', 'a_y', 'a_z']
+            ].to_numpy()
             self.model.time = configuration.loc[0, 'time']
         else:
             self.dynamic = SystemDynamicParameters(
                 static=self.static,
-                temperature=self.model.initial_temperature if not is_initially_frozen else None,
+                temperature=(
+                    self.model.initial_temperature
+                    if not is_initially_frozen
+                    else None
+                ),
             )
-        self.potential = PotentialParameters(**config_parameters['potential_parameters'])
-        external = ExternalParameters(**config_parameters['external_parameters'])
+        self.potential = PotentialParameters(
+            **config_parameters['potential_parameters']
+        )
+        external = ExternalParameters(
+            **config_parameters['external_parameters']
+        )
         attributes = {
             'static': self.static,
             'dynamic': self.dynamic,

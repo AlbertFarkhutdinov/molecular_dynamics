@@ -5,11 +5,11 @@ from scripts.external_parameters import ExternalParameters
 from scripts.helpers import get_empty_float_scalars, get_empty_int_scalars, get_empty_vectors
 from scripts.log_config import log_debug_info, logger_wraps
 from scripts.modeling_parameters import ModelingParameters
-from scripts.mtk_npt_integrator import MTK
+from scripts.integrators.npt_mttk import MTTK
 from scripts.numba_procedures import lf_cycle, update_list_cycle
 from scripts.potential_parameters import PotentialParameters
 from scripts.static_parameters import SystemStaticParameters
-from scripts.velocity_scaling import VelocityScaling
+from scripts.integrators.nvt_velocity_scaling import VelocityScaling
 
 
 class Verlet:
@@ -47,7 +47,7 @@ class Verlet:
                 model=self.model,
             )
         elif environment_type == 'mtk':
-            integrator = MTK(
+            integrator = MTTK(
                 static=self.static,
                 dynamic=self.dynamic,
                 external=self.external,

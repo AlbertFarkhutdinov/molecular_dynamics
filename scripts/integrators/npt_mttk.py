@@ -5,7 +5,7 @@ from scripts.external_parameters import ExternalParameters
 from scripts.static_parameters import SystemStaticParameters
 
 
-class MTK:
+class MTTK:
 
     def __init__(
             self,
