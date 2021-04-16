@@ -1,7 +1,21 @@
 from datetime import datetime
+from json import load
+from os.path import join
 from typing import Any, Dict, Iterable, Optional, Set
 
 import numpy as np
+
+from constants import PATH_TO_CONFIG
+
+
+def get_config_parameters(file_name):
+    _config_filename = join(
+        PATH_TO_CONFIG,
+        file_name
+    )
+    with open(_config_filename, encoding='utf8') as file:
+        config_parameters = load(file)
+    return config_parameters
 
 
 def get_empty_vectors(vectors_number: int) -> np.ndarray:

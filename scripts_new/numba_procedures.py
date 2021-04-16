@@ -14,7 +14,11 @@ def math_round(value):
 
 @nb.njit
 def vec_sum(vec1, vec2, result):
-    """Calculate the sum of two 3d vectors and store the result in the third parameter."""
+    """
+    Calculate the sum of two 3d vectors
+    and store the result in the third parameter.
+
+    """
     result[0] = vec1[0] + vec2[0]
     result[1] = vec1[1] + vec2[1]
     result[2] = vec1[2] + vec2[2]
@@ -22,7 +26,11 @@ def vec_sum(vec1, vec2, result):
 
 @nb.njit
 def vec_sub(vec1, vec2, result):
-    """Calculate the sum of two 3d vectors and store the result in the third parameter."""
+    """
+    Calculate the sum of two 3d vectors
+    and store the result in the third parameter.
+
+    """
     result[0] = vec1[0] - vec2[0]
     result[1] = vec1[1] - vec2[1]
     result[2] = vec1[2] - vec2[2]
@@ -30,7 +38,11 @@ def vec_sub(vec1, vec2, result):
 
 @nb.njit
 def vec_mul_1(vec, scalar, result):
-    """Calculate the sum of two 3d vectors and store the result in the third parameter."""
+    """
+    Calculate the sum of two 3d vectors
+    and store the result in the third parameter.
+
+    """
     result[0] = vec[0] * scalar
     result[1] = vec[1] * scalar
     result[2] = vec[2] * scalar
@@ -38,7 +50,11 @@ def vec_mul_1(vec, scalar, result):
 
 @nb.njit
 def vec_mul_3(vec1, vec2, result):
-    """Calculate the sum of two 3d vectors and store the result in the third parameter."""
+    """
+    Calculate the sum of two 3d vectors
+    and store the result in the third parameter.
+
+    """
     result[0] = vec1[0] * vec2[0]
     result[1] = vec1[1] * vec2[1]
     result[2] = vec1[2] * vec2[2]
@@ -47,14 +63,38 @@ def vec_mul_3(vec1, vec2, result):
 @nb.njit
 def get_radius_vector(index_1, index_2, positions, cell_dimensions):
     radius_vector = positions[index_1] - positions[index_2]
-    if radius_vector[0] < -cell_dimensions[0] / 2 or radius_vector[0] >= cell_dimensions[0] / 2:
-        radius_vector[0] -= math_round(radius_vector[0] / cell_dimensions[0]) * cell_dimensions[0]
-    if radius_vector[0] < -cell_dimensions[0] / 2 or radius_vector[0] >= cell_dimensions[0] / 2:
-        radius_vector[0] -= math_round(radius_vector[0] / cell_dimensions[0]) * cell_dimensions[0]
-    if radius_vector[1] < -cell_dimensions[1] / 2 or radius_vector[1] >= cell_dimensions[1] / 2:
-        radius_vector[1] -= math_round(radius_vector[1] / cell_dimensions[1]) * cell_dimensions[1]
-    if radius_vector[2] < -cell_dimensions[2] / 2 or radius_vector[2] >= cell_dimensions[2] / 2:
-        radius_vector[2] -= math_round(radius_vector[2] / cell_dimensions[2]) * cell_dimensions[2]
+    if (
+            radius_vector[0] < -cell_dimensions[0] / 2
+            or radius_vector[0] >= cell_dimensions[0] / 2
+    ):
+        radius_vector[0] -= (
+                math_round(radius_vector[0] / cell_dimensions[0])
+                * cell_dimensions[0])
+
+    if (
+            radius_vector[0] < -cell_dimensions[0] / 2
+            or radius_vector[0] >= cell_dimensions[0] / 2
+    ):
+        radius_vector[0] -= (
+                math_round(radius_vector[0] / cell_dimensions[0])
+                * cell_dimensions[0]
+        )
+    if (
+            radius_vector[1] < -cell_dimensions[1] / 2
+            or radius_vector[1] >= cell_dimensions[1] / 2
+    ):
+        radius_vector[1] -= (
+                math_round(radius_vector[1] / cell_dimensions[1])
+                * cell_dimensions[1]
+        )
+    if (
+            radius_vector[2] < -cell_dimensions[2] / 2
+            or radius_vector[2] >= cell_dimensions[2] / 2
+    ):
+        radius_vector[2] -= (
+                math_round(radius_vector[2] / cell_dimensions[2])
+                * cell_dimensions[2]
+        )
     distance_squared = (
             radius_vector[0] * radius_vector[0]
             + radius_vector[1] * radius_vector[1]
@@ -71,8 +111,14 @@ def get_interparticle_distances(positions, distances, cell_dimensions):
             distance = 0
             for k in nb.prange(3):
                 component = positions[i][k] - positions[j][k]
-                if component < -cell_dimensions[k] / 2 or component >= cell_dimensions[k] / 2:
-                    component -= math_round(component / cell_dimensions[k]) * cell_dimensions[k]
+                if (
+                        component < -cell_dimensions[k] / 2
+                        or component >= cell_dimensions[k] / 2
+                ):
+                    component -= (
+                            math_round(component / cell_dimensions[k])
+                            * cell_dimensions[k]
+                    )
                 distance += component * component
             distances[i, j] = distance ** 0.5
     return distances
@@ -85,8 +131,14 @@ def get_radius_vectors(positions, radius_vectors, cell_dimensions, distances):
             distance = 0
             radius_vector = positions[i] - positions[j]
             for k in nb.prange(3):
-                if radius_vector[k] < -cell_dimensions[k] / 2 or radius_vector[k] >= cell_dimensions[k] / 2:
-                    radius_vector[k] -= math_round(radius_vector[k] / cell_dimensions[k]) * cell_dimensions[k]
+                if (
+                        radius_vector[k] < -cell_dimensions[k] / 2
+                        or radius_vector[k] >= cell_dimensions[k] / 2
+                ):
+                    radius_vector[k] -= (
+                            math_round(radius_vector[k] / cell_dimensions[k])
+                            * cell_dimensions[k]
+                    )
                 distance += radius_vector[k] * radius_vector[k]
             distances[i, j] = distance ** 0.5
             radius_vectors[i, j] = radius_vector
@@ -180,7 +232,11 @@ def update_list_cycle(
 
 
 @nb.njit
-def get_static_structure_factors(wave_vectors, static_radius_vectors, particles_number):
+def get_static_structure_factors(
+        wave_vectors,
+        static_radius_vectors,
+        particles_number,
+):
     _static_structure_factors = []
     for i in nb.prange(wave_vectors.shape[0]):
         if (wave_vectors[i] == 0).all():
@@ -190,7 +246,11 @@ def get_static_structure_factors(wave_vectors, static_radius_vectors, particles_
             for j in nb.prange(static_radius_vectors.shape[0]):
                 angle = 0
                 for k in nb.prange(3):
-                    angle = angle + wave_vectors[i][k] * static_radius_vectors[j][k]
+                    angle = (
+                            angle
+                            + wave_vectors[i][k]
+                            * static_radius_vectors[j][k]
+                    )
 
                 item += np.cos(angle)
         _static_structure_factors.append(item / particles_number)
@@ -225,9 +285,15 @@ def get_boundary_conditions(
     for i in range(particles_number):
         for j in range(3):
             if positions[i][j] >= cell_dimensions[j] / 2.0:
-                positions[i][j] -= math_round(positions[i][j] / cell_dimensions[j]) * cell_dimensions[j]
+                positions[i][j] -= (
+                        math_round(positions[i][j] / cell_dimensions[j])
+                        * cell_dimensions[j]
+                )
             if positions[i][j] < -cell_dimensions[j] / 2.0:
-                positions[i][j] -= math_round(positions[i][j] / cell_dimensions[j]) * cell_dimensions[j]
+                positions[i][j] -= (
+                        math_round(positions[i][j] / cell_dimensions[j])
+                        * cell_dimensions[j]
+                )
     return positions
 
 

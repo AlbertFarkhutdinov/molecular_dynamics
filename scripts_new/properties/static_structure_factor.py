@@ -49,14 +49,14 @@ class StaticStructureFactor:
         return ssf_instance.grid, ssf_instance.value
 
     def accumulate(self):
-        static_radius_vectors = self.sample.system.configuration.interparticle_vectors
-        static_radius_vectors = static_radius_vectors.reshape(
-            int(static_radius_vectors.size / 3),
+        srv = self.sample.system.configuration.interparticle_vectors
+        srv = srv.reshape(
+            int(srv.size / 3),
             3,
         )
         static_structure_factors = get_static_structure_factors(
             wave_vectors=self.all_wave_vectors,
-            static_radius_vectors=static_radius_vectors,
+            static_radius_vectors=srv,
             particles_number=self.sample.configuration.particles_number,
         )
         wave_numbers, static_structure_factors = get_unique_ssf(

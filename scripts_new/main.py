@@ -13,20 +13,29 @@ heating velocity = epsilon / k_B / tau = 0.55E14 K/s
 
 """
 
+from typing import List
 
 import numpy as np
 
 from scripts_new.core import MolecularDynamics
+from scripts_new.helpers import get_config_parameters
 
 
 def main(
-        config_filename: str = None,
+        config_filenames: List[str],
         is_with_isotherms: bool = True,
 ):
-    MolecularDynamics(
-        config_filename=config_filename,
+    _config_filename = config_filenames[0]
+    md = MolecularDynamics(
+        config_filename=_config_filename,
         is_with_isotherms=is_with_isotherms
-    ).run_md()
+    )
+    md.run_md()
+    for file_name in config_filenames[1:]:
+        config_parameters = get_config_parameters(file_name)
+        md.update_simulation_parameters(config_parameters)
+        md.run_md()
+
     # TODO postprocessor
 
 
@@ -45,6 +54,10 @@ if __name__ == '__main__':
     # CONFIG_FILE_NAME = 'calculation_time_test.json'
 
     main(
-        config_filename=CONFIG_FILE_NAME,
+        config_filenames=[
+            'test_1.json',
+            'test_2.json',
+            'test_3.json',
+        ],
         is_with_isotherms=True,
     )

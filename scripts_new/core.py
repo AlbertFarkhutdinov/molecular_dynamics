@@ -1,7 +1,5 @@
 from copy import deepcopy
 from datetime import datetime
-from json import load
-from os.path import join
 from typing import Optional
 
 import numpy as np
@@ -10,11 +8,11 @@ from scripts_new.integrators.npt_mttk import MTTK
 from scripts_new.integrators.nve import NVE
 from scripts_new.integrators.nvt_velocity_scaling import VelocityScaling
 from scripts_new.accelerations_calculator import AccelerationsCalculator
-from scripts_new.constants import PATH_TO_CONFIG
 from scripts_new.external_parameters import ExternalParameters
 from scripts_new.immutable_parameters import ImmutableParameters
 from scripts_new.isotherm import Isotherm
 from scripts_new.initializer import Initializer
+from scripts_new.helpers import get_config_parameters
 from scripts_new.numba_procedures import get_radius_vectors
 from scripts_new.saver import Saver
 from scripts_new.simulation_parameters import SimulationParameters
@@ -27,16 +25,11 @@ class MolecularDynamics:
 
     def __init__(
             self,
-            config_filename: Optional[str] = None,
+            config_filename: Optional[str],
             is_with_isotherms: bool = True,
             is_msd_calculated: bool = True,
     ):
-        _config_filename = join(
-            PATH_TO_CONFIG,
-            config_filename or 'config.json'
-        )
-        with open(_config_filename, encoding='utf8') as file:
-            config_parameters = load(file)
+        config_parameters = get_config_parameters(config_filename)
 
         self.system = System()
         self.initials = Initializer(
@@ -47,18 +40,9 @@ class MolecularDynamics:
             particles_number=self.initials.configuration.particles_number,
             **config_parameters["immutables"],
         )
-        self.externals = ExternalParameters(**config_parameters["externals"])
-        self.integrator = self.get_integrator()
         self.accelerations_calculator = AccelerationsCalculator(
             system=self.initials,
             immutables=self.immutables,
-        )
-        self.sim_parameters = SimulationParameters(
-            **config_parameters['simulation_parameters']
-        )
-        self.saver = Saver(
-            system=self.system,
-            simulation_parameters=self.sim_parameters,
         )
         self.is_with_isotherms = is_with_isotherms
         self.is_msd_calculated = is_msd_calculated
@@ -76,6 +60,20 @@ class MolecularDynamics:
                 self.system.configuration.particles_number,
             ),
             dtype=np.float32,
+        )
+        self.externals, self.integrator = None, None
+        self.sim_parameters, self.saver = None, None
+        self.update_simulation_parameters(config_parameters)
+
+    def update_simulation_parameters(self, config_parameters):
+        self.externals = ExternalParameters(**config_parameters["externals"])
+        self.integrator = self.get_integrator()
+        self.sim_parameters = SimulationParameters(
+            **config_parameters['simulation_parameters']
+        )
+        self.saver = Saver(
+            system=self.system,
+            simulation_parameters=self.sim_parameters,
         )
 
     def calculate_interparticle_vectors(self):
@@ -204,13 +202,23 @@ class MolecularDynamics:
             )
 
     def save_all(self, system_parameters):
+        time = str(datetime.now()).split('.')[0].replace(
+            ' ', '_'
+        ).replace(
+            ':', '_'
+        ).replace(
+            '-', '_'
+        )
         self.saver.save_configurations(
             is_last_step=True,
         )
         self.saver.save_system_parameters(
             system_parameters=system_parameters,
+            file_name=f'system_parameters_{time}.csv',
         )
-        self.saver.save_configuration()
+        self.saver.save_configuration(
+            file_name=f'system_configuration_{time}.csv',
+        )
 
     @logger_wraps()
     def run_md(self):
@@ -271,4 +279,4 @@ class MolecularDynamics:
 
 
 if __name__ == '__main__':
-    MD = MolecularDynamics('test.json')
+    MD = MolecularDynamics('test_3.json')

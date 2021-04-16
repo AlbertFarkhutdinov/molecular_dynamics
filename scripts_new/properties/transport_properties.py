@@ -25,21 +25,32 @@ class TransportProperties:
             ),
             value_size=2 * self.ensembles_number - 1,
         )
-        # TODO implement Van-Hove function, scattering function, dynamic structure factor
 
     def init_ensembles(self):
-        self.first_positions[self.step] = deepcopy(self.sample.system.configuration.positions)
-        self.first_velocities[self.step] = deepcopy(self.sample.system.configuration.velocities)
-        self.data['time'][self.step - 1] = self.sample.immutables.time_step * self.step
+        self.first_positions[self.step] = deepcopy(
+            self.sample.system.configuration.positions
+        )
+        self.first_velocities[self.step] = deepcopy(
+            self.sample.system.configuration.velocities
+        )
+        self.data['time'][self.step - 1] = (
+                self.sample.immutables.time_step
+                * self.step
+        )
 
     def accumulate(self):
-        first_step = 0 if self.step <= self.ensembles_number else self.step - self.ensembles_number
+        first_step = (
+            0
+            if self.step <= self.ensembles_number
+            else self.step - self.ensembles_number
+        )
         for i in range(first_step, self.step):
             self.data['msd'][i] += self.sample.system.configuration.get_msd(
                 previous_positions=self.first_positions[self.step - i],
             )
             self.data['velocity_autocorrelation'][i] += (
-                    (self.first_velocities[self.step - i] * self.sample.system.configuration.velocities).sum()
+                    (self.first_velocities[self.step - i]
+                     * self.sample.system.configuration.velocities).sum()
                     / self.sample.system.configuration.particles_number
             )
 
@@ -70,6 +81,6 @@ class TransportProperties:
             default_file_name='transport.csv',
             data_name='MSD and self-diffusion coefficient',
             file_name=(
-                f'transport{str(self.sample.externals)}.csv'
+                f'transport_{str(self.sample.externals)}.csv'
             )
         )

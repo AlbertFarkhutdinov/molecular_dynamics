@@ -5,13 +5,20 @@
  - implement Van-Hove function;
  - implement scattering function;
  - implement dynamic structure factor;
- - implement entropy and other thermodynamic potentials;
- - implement chain of simulators;
+ - implement entropy `S` and other thermodynamic potentials;
+   - U(S, V) = sum of kinetic and potential energies (`total_energy`);
+   + H(S, P) = U + PV - enthalpy;
+   - F(S, V) = U - TS - free energy;
+   - G(S, V) = U + PV - TS - Gibbs energy;
+   - dU = TdS - PdV;
+   - dH = TdS + VdP;
+   - dF = -PdV - SdT;
+   - dG = -SdT + VdP;
  - implement dependence of thermodynamic potentials on T and P;
 
 
 ### Комментарии к работе:
- - после того, как система пришла в равновесие с термостатом, 
+ + после того, как система пришла в равновесие с термостатом, 
    нужно её отпустить и наблюдать, как она релаксирует (NVE);
  - вместо зависимостей температуры и давления от времени, построить зависимость
    энергии и термодинамических потенциалов от температуры и давления;
