@@ -13,7 +13,7 @@
   },
   "externals": {
     "environment_type": "velocity_scaling",
-    "heating_velocity": 0.001,
+    "heating_velocity": 0.02,
     "temperature": 1e-5
   },
   "simulation_parameters": {
