@@ -1,29 +1,14 @@
-from scripts.dynamic_parameters import SystemDynamicParameters
+from scripts.integrators.base_integrator import BaseIntegrator
 from scripts.log_config import logger_wraps
-from scripts.modeling_parameters import ModelingParameters
 
 
-class NVE:
-
-    def __init__(
-            self,
-            dynamic: SystemDynamicParameters,
-            model: ModelingParameters,
-    ):
-        self.dynamic = dynamic
-        self.model = model
+class NVE(BaseIntegrator):
 
     @logger_wraps()
     def stage_1(self):
-        self.dynamic.get_next_positions(
-            time_step=self.model.time_step,
-        )
-        self.dynamic.get_next_velocities(
-            time_step=self.model.time_step,
-        )
+        self.get_next_positions()
+        self.get_next_velocities()
 
     @logger_wraps()
     def stage_2(self):
-        self.dynamic.get_next_velocities(
-            time_step=self.model.time_step,
-        )
+        self.get_next_velocities()

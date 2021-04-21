@@ -1,162 +1,146 @@
 from copy import deepcopy
-from json import load
 from datetime import datetime
-from os.path import join
 from typing import Optional
 
 import numpy as np
-import pandas as pd
 
-from scripts.constants import PATH_TO_CONFIG, PATH_TO_DATA
-from scripts.dynamic_parameters import SystemDynamicParameters
+from scripts.integrators.npt_mttk import MTTK
+from scripts.integrators.nve import NVE
+from scripts.integrators.nvt_velocity_scaling import VelocityScaling
+from scripts.accelerations_calculator import AccelerationsCalculator
 from scripts.external_parameters import ExternalParameters
-from scripts.helpers import get_parameters_dict, print_info
+from scripts.immutable_parameters import ImmutableParameters
 from scripts.isotherm import Isotherm
-from scripts.log_config import log_debug_info, logger_wraps
-from scripts.modeling_parameters import ModelingParameters
-from scripts.potential_parameters import PotentialParameters
+from scripts.initializer import Initializer
+from scripts.helpers import get_config_parameters
+from scripts.numba_procedures import get_radius_vectors
 from scripts.saver import Saver
-from scripts.static_parameters import SystemStaticParameters
-from scripts.verlet import Verlet
+from scripts.simulation_parameters import SimulationParameters
+from scripts.system import System
+from scripts.helpers import math_round, get_parameters_dict, print_info
+from scripts.log_config import log_debug_info, logger_wraps
 
 
 class MolecularDynamics:
 
     def __init__(
             self,
-            config_filename: Optional[str] = None,
-            is_initially_frozen: bool = True,
+            config_filename: Optional[str],
             is_with_isotherms: bool = True,
             is_msd_calculated: bool = True,
     ):
-        _config_filename = join(
-            PATH_TO_CONFIG,
-            config_filename or 'config.json'
-        )
-        with open(_config_filename, encoding='utf8') as file:
-            config_parameters = load(file)
+        config_parameters = get_config_parameters(config_filename)
 
-        self.model = ModelingParameters(**config_parameters[
-            'modeling_parameters'
-        ])
-        self.static = SystemStaticParameters(**config_parameters[
-            'static_parameters'
-        ])
-        if 'file_name' in config_parameters['static_parameters']:
-            _file_name = join(
-                PATH_TO_DATA,
-                config_parameters['static_parameters']['file_name'],
-            )
-            configuration = pd.read_csv(_file_name, sep=';')
-            self.static.cell_dimensions = configuration.loc[
-                0,
-                ['L_x', 'L_y', 'L_z'],
-            ].to_numpy()
-            self.static.particles_number = configuration.loc[
-                0,
-                'particles_number',
-            ]
-            self.dynamic = SystemDynamicParameters(
-                static=self.static,
-            )
-            self.dynamic.positions = configuration[['x', 'y', 'z']].to_numpy()
-            self.dynamic.velocities = configuration[
-                ['v_x', 'v_y', 'v_z']
-            ].to_numpy()
-            self.dynamic.accelerations = configuration[
-                ['a_x', 'a_y', 'a_z']
-            ].to_numpy()
-            self.model.time = configuration.loc[0, 'time']
-        else:
-            self.dynamic = SystemDynamicParameters(
-                static=self.static,
-                temperature=(
-                    self.model.initial_temperature
-                    if not is_initially_frozen
-                    else None
-                ),
-            )
-        self.potential = PotentialParameters(
-            **config_parameters['potential_parameters']
+        self.system = System()
+        self.initials = Initializer(
+            system=self.system,
+            **config_parameters["initials"],
+        ).get_initials()
+        self.immutables = ImmutableParameters(
+            particles_number=self.initials.configuration.particles_number,
+            **config_parameters["immutables"],
         )
-        external = ExternalParameters(
-            **config_parameters['external_parameters']
+        self.accelerations_calculator = AccelerationsCalculator(
+            system=self.initials,
+            immutables=self.immutables,
         )
-        attributes = {
-            'static': self.static,
-            'dynamic': self.dynamic,
-            'model': self.model,
-        }
-        self.verlet = Verlet(
-            external=external,
-            potential=self.potential,
-            **attributes,
-        )
-        self.saver = Saver(
-            **attributes,
-            **config_parameters['saver_parameters'],
-        )
-        self.isotherm_parameters = config_parameters['isotherm_parameters']
         self.is_with_isotherms = is_with_isotherms
         self.is_msd_calculated = is_msd_calculated
-        self.environment_type = external.environment_type
+        self.interparticle_vectors = np.zeros(
+            (
+                self.system.configuration.particles_number,
+                self.system.configuration.particles_number,
+                3
+            ),
+            dtype=np.float32,
+        )
+        self.interparticle_distances = np.zeros(
+            (
+                self.system.configuration.particles_number,
+                self.system.configuration.particles_number,
+            ),
+            dtype=np.float32,
+        )
+        self.externals, self.integrator = None, None
+        self.sim_parameters, self.saver = None, None
+        self.update_simulation_parameters(config_parameters)
+
+    def update_simulation_parameters(self, config_parameters):
+        self.externals = ExternalParameters(**config_parameters["externals"])
+        self.integrator = self.get_integrator()
+        self.sim_parameters = SimulationParameters(
+            **config_parameters['simulation_parameters']
+        )
+        self.saver = Saver(
+            system=self.system,
+            simulation_parameters=self.sim_parameters,
+        )
+
+    def calculate_interparticle_vectors(self):
+        self.interparticle_vectors, self.interparticle_distances = get_radius_vectors(
+            radius_vectors=self.interparticle_vectors,
+            positions=self.system.configuration.positions,
+            cell_dimensions=self.system.cell_dimensions,
+            distances=self.interparticle_distances,
+        )
+
+    def get_integrator(self):
+        integrator = {
+            'mttk': MTTK,
+            'velocity_scaling': VelocityScaling,
+        }.get(self.externals.environment_type, NVE)
+        return integrator(
+            system=self.initials,
+            time_step=self.immutables.time_step,
+            external=self.externals,
+        )
 
     def md_time_step(
             self,
-            potential_table: np.ndarray,
             step: int,
             system_parameters: dict = None,
             is_rdf_calculation: bool = False,
             is_pbc_switched_on: bool = False,
     ):
         parameters = {}
-        system_kinetic_energy, temperature = self.verlet.system_dynamics(
-            stage_id=1,
-            environment_type=self.environment_type,
-        )
+        self.integrator.system = self.system
+        self.integrator.stage_1()
+        kinetic_energy, _ = self.integrator.after_stage(1)
         if is_pbc_switched_on:
-            self.dynamic.boundary_conditions()
-        self.verlet.load_forces(
-            potential_table=potential_table,
-        )
-        parameters['system_kinetic_energy'] = system_kinetic_energy
-        parameters['potential_energy'] = self.dynamic.potential_energy
-        cell_volume, density, pressure, total_energy = self.verlet.system_dynamics(
-            stage_id=2,
-            environment_type=self.environment_type,
+            self.system.apply_boundary_conditions()
+        self.accelerations_calculator.system = self.system
+        self.accelerations_calculator.load_forces()
+        parameters['kinetic_energy'] = kinetic_energy
+        parameters['potential_energy'] = self.system.potential_energy
+        self.integrator.system = self.system
+        self.integrator.stage_2()
+        _, _, pressure, total_energy = self.integrator.after_stage(
+            stage_id=2
         )
         parameters.update({
-            'system_kinetic_energy': self.dynamic.system_kinetic_energy,
-            'temperature': self.dynamic.temperature(
-                system_kinetic_energy=parameters['system_kinetic_energy']
+            'kinetic_energy': self.system.configuration.kinetic_energy,
+            'temperature': self.system.configuration.get_temperature(
+                kinetic_energy=parameters['kinetic_energy']
             ),
             'pressure': pressure,
             'total_energy': total_energy,
-            'virial': self.dynamic.virial,
+            'virial': self.system.virial,
         })
-
-        log_debug_info(f'Kinetic Energy after system_dynamics_2: {self.dynamic.system_kinetic_energy}')
-        log_debug_info(f'Temperature after system_dynamics_2: {parameters["temperature"]}')
-        log_debug_info(f'Pressure after system_dynamics_2: {parameters["pressure"]}')
-        log_debug_info(f'Potential energy after system_dynamics_2: {parameters["potential_energy"]}')
-        log_debug_info(f'Total energy after system_dynamics_2: {parameters["total_energy"]}')
-        log_debug_info(f'Virial after system_dynamics_2: {self.dynamic.virial}')
-        log_debug_info(f'Cell volume after system_dynamics_2: {cell_volume}')
-        log_debug_info(f'Density after system_dynamics_2: {density}')
         if not is_rdf_calculation and system_parameters is not None:
             if self.is_msd_calculated:
-                msd = self.dynamic.get_msd(
-                    previous_positions=self.dynamic.first_positions,
+                msd = self.system.configuration.get_msd(
+                    previous_positions=self.initials.configuration.positions,
                 )
-                diffusion = msd / 6 / self.model.time_step / step
+                diffusion = msd / 6 / self.immutables.time_step / step
                 parameters['msd'] = msd
                 parameters['diffusion'] = diffusion
                 log_debug_info(f'MSD after system_dynamics_2: {msd}')
-                log_debug_info(f'Diffusion after system_dynamics_2: {diffusion}')
+                log_debug_info(
+                    f'Diffusion after system_dynamics_2: {diffusion}'
+                )
 
-            self.saver.dynamic = self.dynamic
+            self.saver.system = self.system
             self.saver.step = step
-            self.saver.model.time = self.model.time
             self.saver.update_system_parameters(
                 system_parameters=system_parameters,
                 parameters=parameters,
@@ -165,9 +149,13 @@ class MolecularDynamics:
             self.saver.save_configurations()
 
     def fix_current_temperature(self):
-        self.verlet.external.temperature = round(self.dynamic.temperature(), 5)
-        if self.verlet.external.temperature == 0:
-            self.verlet.external.temperature = self.model.initial_temperature
+        self.externals.temperature = math_round(
+            number=self.system.configuration.get_temperature(),
+            number_of_digits_after_separator=5,
+        )
+        if self.externals.temperature == 0.0:
+            _initial_temperature = self.initials.configuration.temperature
+            self.externals.temperature = _initial_temperature
 
     def reduce_transition_processes(
             self,
@@ -175,33 +163,32 @@ class MolecularDynamics:
     ):
         print('Reducing Transition Processes.')
         log_debug_info('Reducing Transition Processes.')
-        external_temperature = self.verlet.external.temperature
+        external_temperature = self.externals.temperature
         self.fix_current_temperature()
         for _ in range(skipped_iterations):
             self.md_time_step(
-                potential_table=self.potential.potential_table,
                 step=1,
                 is_rdf_calculation=True,
             )
-        self.verlet.external.temperature = external_temperature
+        self.externals.temperature = external_temperature
 
     def fix_external_conditions(self):
-        print(f'********Isotherm for T = {self.dynamic.temperature():.5f}********')
-        self.fix_current_temperature()
-        self.verlet.external.pressure = self.dynamic.get_pressure(
-            temperature=self.verlet.external.temperature,
+        print(
+            f'*******Isotherm for '
+            f'T = {self.system.configuration.get_temperature():.5f}'
+            f'*******'
         )
-        log_debug_info(f'External Temperature: {self.verlet.external.temperature}')
-        log_debug_info(f'External Pressure: {self.verlet.external.pressure}')
+        self.fix_current_temperature()
+        self.externals.pressure = self.system.get_pressure(
+            temperature=self.externals.temperature,
+        )
+        log_debug_info(f'External Temperature: {self.externals.temperature}')
+        log_debug_info(f'External Pressure: {self.externals.pressure}')
 
     def equilibrate_system(self, equilibration_steps: int):
         for eq_step in range(equilibration_steps):
-            temperature = self.dynamic.temperature()
-            pressure = self.dynamic.get_pressure(
-                temperature=temperature,
-                cell_volume=self.static.get_cell_volume(),
-                density=self.static.get_density()
-            )
+            temperature = self.system.configuration.get_temperature()
+            pressure = self.system.get_pressure(temperature=temperature)
             message = (
                 f'Equilibration Step: {eq_step:3d}/{equilibration_steps}, \t'
                 f'Temperature = {temperature:8.5f} epsilon/k_B, \t'
@@ -210,19 +197,28 @@ class MolecularDynamics:
             log_debug_info(message)
             print(message)
             self.md_time_step(
-                potential_table=self.potential.potential_table,
                 step=1,
                 is_rdf_calculation=True,
             )
 
     def save_all(self, system_parameters):
+        time = str(datetime.now()).split('.')[0].replace(
+            ' ', '_'
+        ).replace(
+            ':', '_'
+        ).replace(
+            '-', '_'
+        )
         self.saver.save_configurations(
             is_last_step=True,
         )
         self.saver.save_system_parameters(
             system_parameters=system_parameters,
+            file_name=f'system_parameters_{time}.csv',
         )
-        self.saver.save_configuration()
+        self.saver.save_configuration(
+            file_name=f'system_configuration_{time}.csv',
+        )
 
     @logger_wraps()
     def run_md(self):
@@ -231,46 +227,52 @@ class MolecularDynamics:
             names=(
                 'temperature',
                 'pressure',
-                'system_kinetic_energy',
+                'kinetic_energy',
                 'potential_energy',
                 'total_energy',
                 'virial',
                 'msd',
                 'diffusion',
             ),
-            value_size=self.model.iterations_numbers,
+            value_size=self.sim_parameters.iterations_numbers,
         )
 
         # self.reduce_transition_processes()
-        self.dynamic.first_positions = deepcopy(self.dynamic.positions)
+        # self.dynamic.first_positions = deepcopy(self.dynamic.positions)
 
-        for step in range(1, self.model.iterations_numbers + 1):
-            self.model.time += self.model.time_step
-            log_debug_info(f'Step: {step}; Time: {self.model.time:.3f};')
+        for step in range(1, self.sim_parameters.iterations_numbers + 1):
+            self.system.time += self.immutables.time_step
+            log_debug_info(f'Step: {step}; Time: {self.system.time:.3f};')
             self.md_time_step(
-                potential_table=self.potential.potential_table,
                 step=step,
                 system_parameters=system_parameters,
                 is_pbc_switched_on=True,
             )
             print_info(
                 step=step,
-                iterations_numbers=self.model.iterations_numbers,
-                current_time=self.model.time,
+                iterations_numbers=self.sim_parameters.iterations_numbers,
+                current_time=self.system.time,
                 parameters=system_parameters,
             )
             log_debug_info(f'End of step {step}.\n')
 
             if self.is_with_isotherms:
-                isotherm_steps = (
-                    1,
-                    # 1000,
-                )
-                if step in isotherm_steps or step % self.isotherm_parameters['isotherm_saving_step'] == 0:
+                isotherm_steps = (1, )
+                if (
+                        not (step % self.sim_parameters.isotherm_saving_step)
+                        or step in isotherm_steps
+                ):
                     Isotherm(
                         sample=deepcopy(self),
                     ).run()
         self.save_all(
             system_parameters=system_parameters,
         )
-        print(f'Calculation completed. Time of calculation: {datetime.now() - start}')
+        print(
+            f'Simulation is completed. '
+            f'Time of calculation: {datetime.now() - start}'
+        )
+
+
+if __name__ == '__main__':
+    MD = MolecularDynamics('test_3.json')

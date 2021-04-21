@@ -1,4 +1,4 @@
-from scripts_new.helpers import get_representation
+from scripts.helpers import get_representation
 
 
 class SimulationParameters:

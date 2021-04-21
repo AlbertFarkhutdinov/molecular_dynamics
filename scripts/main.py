@@ -13,41 +13,38 @@ heating velocity = epsilon / k_B / tau = 0.55E14 K/s
 
 """
 
+from typing import List
 
 import numpy as np
 
 from scripts.core import MolecularDynamics
+from scripts.helpers import get_config_parameters
 
 
 def main(
-        config_filename: str = None,
-        is_initially_frozen: bool = True,
+        config_filenames: List[str],
         is_with_isotherms: bool = True,
 ):
-    MolecularDynamics(
-        config_filename=config_filename,
-        is_initially_frozen=is_initially_frozen,
+    _config_filename = config_filenames[0]
+    md = MolecularDynamics(
+        config_filename=_config_filename,
         is_with_isotherms=is_with_isotherms
-    ).run_md()
+    )
+    md.run_md()
+    for file_name in config_filenames[1:]:
+        config_parameters = get_config_parameters(file_name)
+        md.update_simulation_parameters(config_parameters)
+        md.run_md()
+
     # TODO postprocessor
 
 
 if __name__ == '__main__':
-    # TODO check potential at T = 2.8 (compare 2020-12-17 and the book, p.87)
     np.set_printoptions(threshold=5000)
 
-    # CONFIG_FILE_NAME = 'book_chapter_4_stage_1.json'
-    CONFIG_FILE_NAME = 'cooling_with_non_constant_velocity.json'
-    # CONFIG_FILE_NAME = 'cooling.json'
-    # CONFIG_FILE_NAME = 'book_chapter_4_stage_2.json'
-    # CONFIG_FILE_NAME = 'slow_cooling.json'
-    # CONFIG_FILE_NAME = 'npt_2.8.json'
-    # CONFIG_FILE_NAME = 'equilibrium_2.8.json'
-    # CONFIG_FILE_NAME = 'equilibrium_0.01.json'
-    # CONFIG_FILE_NAME = 'calculation_time_test.json'
-
     main(
-        config_filename=CONFIG_FILE_NAME,
-        is_initially_frozen=False,
+        config_filenames=[
+            'cooling_slow.json',
+        ],
         is_with_isotherms=True,
     )

@@ -5,12 +5,8 @@ from scripts.potentials.base_potential import BasePotential
 
 class LennardJones(BasePotential):
 
-    def __init__(self):
-        super().__init__()
-        self.table_size = 25000
-        self.distances = 0.5 + 0.0001 * np.arange(1, self.table_size + 1)
-        self.r_cut = 2.5
-        self.potential_table = self.get_energies_and_forces()
+    def __repr__(self):
+        return f'{self.__class__.__name__}(table_size = {self.table_size!r})'
 
     def get_energies_and_forces(self):
         # forces - это величины -dU/rdr.

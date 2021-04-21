@@ -1,9 +1,9 @@
-from scripts_new.immutable_parameters import ImmutableParameters
-from scripts_new.system import System
-from scripts_new.helpers import get_empty_float_scalars, get_empty_int_scalars
-from scripts_new.helpers import get_empty_vectors
-from scripts_new.log_config import log_debug_info, logger_wraps
-from scripts_new.numba_procedures import lf_cycle, update_list_cycle
+from scripts.immutable_parameters import ImmutableParameters
+from scripts.system import System
+from scripts.helpers import get_empty_float_scalars, get_empty_int_scalars
+from scripts.helpers import get_empty_vectors
+from scripts.log_config import log_debug_info, logger_wraps
+from scripts.numba_procedures import lf_cycle, update_list_cycle
 
 
 class AccelerationsCalculator:

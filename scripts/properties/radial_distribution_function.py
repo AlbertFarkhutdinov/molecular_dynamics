@@ -2,8 +2,8 @@ from atooms.trajectory import Trajectory
 import atooms.postprocessing as pp
 import numpy as np
 
-from scripts_new.helpers import get_empty_float_scalars
-from scripts_new.saver import Saver
+from scripts.helpers import get_empty_float_scalars
+from scripts.saver import Saver
 
 
 class RadialDistributionFunction:

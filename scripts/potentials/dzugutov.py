@@ -7,40 +7,44 @@ from scripts.helpers import get_empty_float_scalars
 
 class Dzugutov(BasePotential):
 
-    def __init__(self):
-        super().__init__()
-        self.r_cut = 1.94
-        self.table_size = 15000
-        self.distances = 0.5 + 0.0001 * np.arange(1, self.table_size + 1)
-        self.potential_table = self.get_energies_and_forces()
+    def __repr__(self):
+        return f'{self.__class__.__name__}(table_size = {self.table_size!r})'
 
     def get_energies_and_forces(self):
-        aa, bb, a, c, d, m = 5.82, 1.28, 1.87, 1.1, 0.27, 16
+        factors = (5.82, 1.28, 1.87, 1.1, 0.27, 16)
         v_1 = get_empty_float_scalars(self.table_size)
         v_2 = get_empty_float_scalars(self.table_size)
         f_1 = get_empty_float_scalars(self.table_size)
         f_2 = get_empty_float_scalars(self.table_size)
 
         for i in range(self.table_size):
-            if self.distances[i] / self.sigma < a:
-                _aa_eps = aa * self.epsilon
+            if self.distances[i] / self.sigma < factors[2]:
+                _a_eps = factors[0] * self.epsilon
                 _sigma_dist = self.sigma / self.distances
-                _exp_arg = self.sigma * c / (self.distances - self.sigma * a)
-                v_1[i] = _aa_eps * (_sigma_dist ** m - bb) * np.exp(_exp_arg)
+                _exp_arg = (
+                        self.sigma * factors[3]
+                        / (self.distances - self.sigma * factors[2])
+                )
+                v_1[i] = (
+                        _a_eps
+                        * (_sigma_dist ** factors[5] - factors[1])
+                        * np.exp(_exp_arg)
+                )
                 f_1[i] = (
-                        _aa_eps
+                        _a_eps
                         * (
-                                -m / self.sigma * _sigma_dist ** (m + 1)
-                                - _sigma_dist ** m - bb
+                                -factors[5] / self.sigma
+                                * _sigma_dist ** (factors[5] + 1)
+                                - _sigma_dist ** factors[5] - factors[1]
                         ) * np.exp(_exp_arg) / _exp_arg / _exp_arg
                 )
             if self.distances[i] / self.sigma < self.r_cut:
-                _bb_eps = bb * self.epsilon
+                _b_eps = factors[1] * self.epsilon
                 _sigma_cut = self.sigma * self.r_cut
                 _exp_arg = _sigma_cut / (self.distances - _sigma_cut)
-                v_2[i] = _bb_eps * np.exp(_exp_arg)
+                v_2[i] = _b_eps * np.exp(_exp_arg)
                 f_2[i] = (
-                        -_bb_eps * self.sigma * d * np.exp(_exp_arg)
+                        -_b_eps * self.sigma * factors[4] * np.exp(_exp_arg)
                         / (self.distances - _sigma_cut)
                         / (self.distances - _sigma_cut)
                 )

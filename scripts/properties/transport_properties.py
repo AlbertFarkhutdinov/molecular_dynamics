@@ -11,7 +11,7 @@ class TransportProperties:
             sample,
     ):
         self.sample = sample
-        self.ensembles_number = sample.isotherm_parameters['ensembles_number']
+        self.ensembles_number = sample.sim_parameters.ensembles_number
         self.step = 1
         self.first_positions, self.first_velocities = {}, {}
         self.green_kubo_diffusion = 0
@@ -25,22 +25,33 @@ class TransportProperties:
             ),
             value_size=2 * self.ensembles_number - 1,
         )
-        # TODO implement Van-Hove function, scattering function, dynamic structure factor
 
     def init_ensembles(self):
-        self.first_positions[self.step] = deepcopy(self.sample.dynamic.positions)
-        self.first_velocities[self.step] = deepcopy(self.sample.dynamic.velocities)
-        self.data['time'][self.step - 1] = self.sample.model.time_step * self.step
+        self.first_positions[self.step] = deepcopy(
+            self.sample.system.configuration.positions
+        )
+        self.first_velocities[self.step] = deepcopy(
+            self.sample.system.configuration.velocities
+        )
+        self.data['time'][self.step - 1] = (
+                self.sample.immutables.time_step
+                * self.step
+        )
 
     def accumulate(self):
-        first_step = 0 if self.step <= self.ensembles_number else self.step - self.ensembles_number
+        first_step = (
+            0
+            if self.step <= self.ensembles_number
+            else self.step - self.ensembles_number
+        )
         for i in range(first_step, self.step):
-            self.data['msd'][i] += self.sample.dynamic.get_msd(
+            self.data['msd'][i] += self.sample.system.configuration.get_msd(
                 previous_positions=self.first_positions[self.step - i],
             )
             self.data['velocity_autocorrelation'][i] += (
-                    (self.first_velocities[self.step - i] * self.sample.dynamic.velocities).sum()
-                    / self.sample.static.particles_number
+                    (self.first_velocities[self.step - i]
+                     * self.sample.system.configuration.velocities).sum()
+                    / self.sample.system.configuration.particles_number
             )
 
     def normalize(self):
@@ -58,14 +69,18 @@ class TransportProperties:
         for i in range(self.ensembles_number):
             self.green_kubo_diffusion += self.data[
                                         'velocity_autocorrelation'
-                                    ][i] * self.sample.model.time_step / 3
+                                    ][i] * self.sample.immutables.time_step / 3
             self.data['green_kubo_diffusion'][i] += self.green_kubo_diffusion
 
     def save(self):
         self.normalize()
-        Saver().save_dict(
+        Saver(
+            simulation_parameters=self.sample.sim_parameters,
+        ).save_dict(
             data=self.data,
-            default_file_name=f'transport.csv',
+            default_file_name='transport.csv',
             data_name='MSD and self-diffusion coefficient',
-            file_name=f'transport_T_{self.sample.verlet.external.temperature:.5f}_P_{self.sample.verlet.external.pressure:.5f}_{self.sample.verlet.external.heating_velocity:.8f}.csv'
+            file_name=(
+                f'transport_{str(self.sample.externals)}.csv'
+            )
         )

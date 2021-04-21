@@ -2,10 +2,10 @@ from atooms.trajectory import Trajectory
 import atooms.postprocessing as pp
 import numpy as np
 
-from scripts_new.helpers import get_empty_float_scalars
-from scripts_new.numba_procedures import get_static_structure_factors
-from scripts_new.numba_procedures import get_unique_ssf
-from scripts_new.saver import Saver
+from scripts.helpers import get_empty_float_scalars
+from scripts.numba_procedures import get_static_structure_factors
+from scripts.numba_procedures import get_unique_ssf
+from scripts.saver import Saver
 
 
 class StaticStructureFactor:
