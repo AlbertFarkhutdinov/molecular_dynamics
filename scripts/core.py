@@ -29,21 +29,26 @@ class MolecularDynamics:
             is_with_isotherms: bool = True,
             is_msd_calculated: bool = True,
     ):
+        print(f'Initialization of {self.__class__.__name__} instance.')
         config_parameters = get_config_parameters(config_filename)
 
         self.system = System()
+        print(f'System is created.')
         self.initials = Initializer(
             system=self.system,
             **config_parameters["initials"],
         ).get_initials()
+        print(f'Initial parameters are received.')
         self.immutables = ImmutableParameters(
             particles_number=self.initials.configuration.particles_number,
             **config_parameters["immutables"],
         )
+        print(f'Immutable parameters are received.')
         self.accelerations_calculator = AccelerationsCalculator(
             system=self.initials,
             immutables=self.immutables,
         )
+        print(f'Accelerations Calculator is initialized.')
         self.is_with_isotherms = is_with_isotherms
         self.is_msd_calculated = is_msd_calculated
         self.interparticle_vectors = np.zeros(
@@ -64,6 +69,7 @@ class MolecularDynamics:
         self.externals, self.integrator = None, None
         self.sim_parameters, self.saver = None, None
         self.update_simulation_parameters(config_parameters)
+        print(f'Simulation parameters are updated.')
 
     def update_simulation_parameters(self, config_parameters):
         self.externals = ExternalParameters(**config_parameters["externals"])

@@ -21,7 +21,7 @@ def get_config_parameters(file_name):
 def save_config_parameters(config_parameters, config_number):
     _config_filename = join(
         PATH_TO_DATA,
-        f'{get_date()}_config_{config_number}',
+        f'{get_date()}_config_{config_number}.inf',
     )
     with open(_config_filename, encoding='utf8', mode='w') as file:
         file.write(dumps(config_parameters, indent=2, ensure_ascii=False))

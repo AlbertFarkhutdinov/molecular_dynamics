@@ -16,13 +16,17 @@ def main(
         is_with_isotherms=is_with_isotherms
     )
     md.run_md()
+    save_config_parameters(
+        config_parameters=get_config_parameters(_config_filename),
+        config_number=0,
+    )
     for i, file_name in enumerate(config_filenames[1:]):
         config_parameters = get_config_parameters(file_name)
         md.update_simulation_parameters(config_parameters)
         md.run_md()
         save_config_parameters(
             config_parameters=config_parameters,
-            config_number=i,
+            config_number=i + 1,
         )
 
 
@@ -31,7 +35,7 @@ if __name__ == '__main__':
 
     main(
         config_filenames=[
-            'cooling_normal_0.3.json',
+            'nve.json',
         ],
         is_with_isotherms=True,
     )
