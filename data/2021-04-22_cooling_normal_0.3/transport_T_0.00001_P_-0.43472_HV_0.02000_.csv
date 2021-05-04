@@ -1,4 +1,4 @@
-time;msd;einstein_diffusion;velocity_autocorrelation;green_kubo_diffusion
+time;msd;einstein_diffusion;vaf;gk_diffusion
 0.005;0.0;0.0;3.6490892e-05;6.081815e-08
 0.01;9.994651e-10;1.6657753e-08;3.6491198e-05;1.2163682e-07
 0.015;3.9979473e-09;4.4421636e-08;3.648993e-05;1.8245336e-07

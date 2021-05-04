@@ -1,11 +1,11 @@
 from datetime import datetime
-from json import load
+from json import load, dumps
 from os.path import join
 from typing import Any, Dict, Iterable, Optional, Set
 
 import numpy as np
 
-from constants import PATH_TO_CONFIG
+from constants import PATH_TO_CONFIG, PATH_TO_DATA
 
 
 def get_config_parameters(file_name):
@@ -16,6 +16,15 @@ def get_config_parameters(file_name):
     with open(_config_filename, encoding='utf8') as file:
         config_parameters = load(file)
     return config_parameters
+
+
+def save_config_parameters(config_parameters, config_number):
+    _config_filename = join(
+        PATH_TO_DATA,
+        f'{get_date()}_config_{config_number}',
+    )
+    with open(_config_filename, encoding='utf8', mode='w') as file:
+        file.write(dumps(config_parameters, indent=2, ensure_ascii=False))
 
 
 def get_empty_vectors(vectors_number: int) -> np.ndarray:

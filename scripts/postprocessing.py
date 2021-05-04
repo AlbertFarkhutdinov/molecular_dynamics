@@ -120,6 +120,7 @@ class PostProcessor:
         self.gk_diffusion = GKDiffusionPP(path_to_data)
         self.diffusion_coefficients = np.zeros(len(setups))
         self.post_init()
+        self.system_parameters = self.get_system_parameters()
 
     def post_init(self):
         for i, setup in enumerate(self.setups):
@@ -295,17 +296,16 @@ class PostProcessor:
 
     def plot_system_parameters(
             self,
-            system_parameters,
             column_names,
             y_label,
             **limits,
     ):
 
-        times = (system_parameters.index + 1) * 0.005
+        times = (self.system_parameters.index + 1) * 0.005
         for column_name in column_names:
             plt.scatter(
                 times,
-                system_parameters[column_name],
+                self.system_parameters[column_name],
                 s=1,
                 label=column_name.replace('_', ' ').capitalize(),
             )
@@ -326,3 +326,73 @@ class PostProcessor:
             f'{prefix}_{self.plot_filename_postfix}.png'
         )
 
+    def get_enthalpy(self):
+        self.system_parameters['enthalpy'] = (
+                self.system_parameters['total_energy']
+                + self.system_parameters['pressure']
+                * self.system_parameters['volume']
+        )
+        return self.system_parameters['enthalpy']
+
+    def get_internal_energy_diff(self):
+        self.system_parameters['de'] = np.nan
+        self.system_parameters.loc[1:, 'de'] = (
+                self.system_parameters['total_energy'].values[1:]
+                - self.system_parameters['total_energy'].values[:-1]
+        )
+
+    def get_volume_diff(self):
+        self.system_parameters['dv'] = np.nan
+        self.system_parameters.loc[1:, 'dv'] = (
+                self.system_parameters['volume'].values[1:]
+                - self.system_parameters['volume'].values[:-1]
+        )
+
+    def get_entropy_diff(self):
+        self.system_parameters['ds'] = np.nan
+        self.get_internal_energy_diff()
+        self.get_volume_diff()
+        self.system_parameters['ds'] = (
+                       self.system_parameters['de']
+                       + self.system_parameters['pressure']
+                       * self.system_parameters['dv']
+               ) / self.system_parameters['temperature']
+
+    def get_entropy(self):
+        self.get_entropy_diff()
+        self.system_parameters['entropy'] = 0.0
+        for i in self.system_parameters.index:
+            if i == 0:
+                continue
+            self.system_parameters.loc[
+                i, 'entropy'
+            ] = self.system_parameters.loc[
+                i - 1,
+                'entropy'
+            ]
+            self.system_parameters.loc[
+                i, 'entropy'
+            ] += self.system_parameters.loc[
+                i,
+                'ds'
+            ]
+
+        return self.system_parameters
+
+    def get_free_energy(self):
+        self.get_entropy()
+        self.system_parameters['free_energy'] = (
+            self.system_parameters['total_energy']
+            - self.system_parameters['temperature']
+            * self.system_parameters['entropy']
+        )
+        return self.system_parameters['free_energy']
+
+    def get_gibbs_energy(self):
+        self.get_enthalpy()
+        self.system_parameters['gibbs_energy'] = (
+            self.system_parameters['enthalpy']
+            - self.system_parameters['temperature']
+            * self.system_parameters['entropy']
+        )
+        return self.system_parameters['gibbs_energy']

@@ -277,4 +277,4 @@ class MolecularDynamics:
 
 
 if __name__ == '__main__':
-    MD = MolecularDynamics('test_3.json')
+    MD = MolecularDynamics('nve.json')

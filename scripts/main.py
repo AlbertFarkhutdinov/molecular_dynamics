@@ -3,7 +3,7 @@ from typing import List
 import numpy as np
 
 from scripts.core import MolecularDynamics
-from scripts.helpers import get_config_parameters
+from scripts.helpers import get_config_parameters, save_config_parameters
 
 
 def main(
@@ -16,12 +16,14 @@ def main(
         is_with_isotherms=is_with_isotherms
     )
     md.run_md()
-    for file_name in config_filenames[1:]:
+    for i, file_name in enumerate(config_filenames[1:]):
         config_parameters = get_config_parameters(file_name)
         md.update_simulation_parameters(config_parameters)
         md.run_md()
-
-    # TODO postprocessor
+        save_config_parameters(
+            config_parameters=config_parameters,
+            config_number=i,
+        )
 
 
 if __name__ == '__main__':

@@ -5,16 +5,15 @@
  - implement Van-Hove function;
  - implement scattering function;
  - implement dynamic structure factor;
- - implement entropy `S` and other thermodynamic potentials;
-   - U(S, V) = sum of kinetic and potential energies (`total_energy`);
+ + implement entropy `S` and other thermodynamic potentials;
+   + U(S, V) = sum of kinetic and potential energies (`total_energy`);
    + H(S, P) = U + PV - enthalpy;
-   - F(S, V) = U - TS - free energy;
-   - G(S, V) = U + PV - TS - Gibbs energy;
-   - dU = TdS - PdV;
-   - dH = TdS + VdP;
-   - dF = -PdV - SdT;
-   - dG = -SdT + VdP;
- - implement dependence of thermodynamic potentials on T and P;
+   + F(S, V) = U - TS - free energy;
+   + G(S, V) = U + PV - TS - Gibbs energy;
+   + dS = (dU + PdV) / T;
+   + dH = TdS + VdP;
+   + dF = -PdV - SdT;
+   + dG = -SdT + VdP;
 
 
 ### Комментарии к работе:
@@ -35,12 +34,12 @@
    
 ### Комментарии к презентации:
  + температура указать не 0, а конечную величину — вызывает вопросы;
+ + соотношение Эйнштейна — более подходящее для вычисления 
+   коэффициента самодиффузии. Для Грина-Кубо нужны большие промежутки времени,
+   чтобы набрать достаточную статистику;
  - среднеквадратичное смещение — показать при малых температурах 
    в большем масштабе, либо отдельно, либо всё вместе 
    в логарифмическом масштабе;
- - соотношение Эйнштейна — более подходящее для вычисления 
-   коэффициента самодиффузии. Для Грина-Кубо нужны большие промежутки времени,
-   чтобы набрать достаточную статистику;
  - знать, для чего нужны все эти картинки;
  - использовать периодические граничные условия и уметь их объяснять;
  - по фото визуализации ответить, это жидкость или газ;
