@@ -14,14 +14,14 @@ class TransportProperties:
         self.ensembles_number = sample.sim_parameters.ensembles_number
         self.step = 1
         self.first_positions, self.first_velocities = {}, {}
-        self.green_kubo_diffusion = 0
+        self.gk_diffusion = 0
         self.data = get_parameters_dict(
             names=(
                 'time',
                 'msd',
                 'einstein_diffusion',
-                'velocity_autocorrelation',
-                'green_kubo_diffusion',
+                'vaf',
+                'gk_diffusion',
             ),
             value_size=2 * self.ensembles_number - 1,
         )
@@ -48,7 +48,7 @@ class TransportProperties:
             self.data['msd'][i] += self.sample.system.configuration.get_msd(
                 previous_positions=self.first_positions[self.step - i],
             )
-            self.data['velocity_autocorrelation'][i] += (
+            self.data['vaf'][i] += (
                     (self.first_velocities[self.step - i]
                      * self.sample.system.configuration.velocities).sum()
                     / self.sample.system.configuration.particles_number
@@ -59,18 +59,15 @@ class TransportProperties:
             self.data[key] = value[:self.ensembles_number]
 
         self.data['msd'] = self.data['msd'] / self.ensembles_number
-        self.data[
-            'velocity_autocorrelation'
-        ] = self.data['velocity_autocorrelation'] / self.ensembles_number
-        self.data[
-            'einstein_diffusion'
-        ] = self.data['msd'] / 6.0 / self.data['time']
-
+        self.data['vaf'] = self.data['vaf'] / self.ensembles_number
+        self.data['einstein_diffusion'] = (
+                self.data['msd'] / 6.0 / self.data['time']
+        )
         for i in range(self.ensembles_number):
-            self.green_kubo_diffusion += self.data[
-                                        'velocity_autocorrelation'
-                                    ][i] * self.sample.immutables.time_step / 3
-            self.data['green_kubo_diffusion'][i] += self.green_kubo_diffusion
+            self.gk_diffusion += (
+                    self.data['vaf'][i] * self.sample.immutables.time_step / 3
+            )
+            self.data['gk_diffusion'][i] += self.gk_diffusion
 
     def save(self):
         self.normalize()

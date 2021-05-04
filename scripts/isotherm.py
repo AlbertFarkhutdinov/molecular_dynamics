@@ -71,14 +71,14 @@ class Isotherm:
                 #     self.ssf.accumulate()
 
             self.transport_properties.accumulate()
-            _file_name = (
-                f'T_{self.sample.externals.temperature:.5f}_'
-                f'dt_{self.sample.immutables.time_step}.xyz'
-            )
-            self.sample.system.save_xyz_file(
-                filename=_file_name,
-                step=step,
-            )
+            # _file_name = (
+            #     f'T_{self.sample.externals.temperature:.5f}_'
+            #     f'dt_{self.sample.immutables.time_step}.xyz'
+            # )
+            # self.sample.system.save_xyz_file(
+            #     filename=_file_name,
+            #     step=step,
+            # )
 
         self.transport_properties.save()
         self.rdf.save()

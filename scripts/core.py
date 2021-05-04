@@ -125,6 +125,7 @@ class MolecularDynamics:
             'pressure': pressure,
             'total_energy': total_energy,
             'virial': self.system.virial,
+            'volume': self.system.volume,
         })
         if not is_rdf_calculation and system_parameters is not None:
             if self.is_msd_calculated:
@@ -233,6 +234,7 @@ class MolecularDynamics:
                 'virial',
                 'msd',
                 'diffusion',
+                'volume',
             ),
             value_size=self.sim_parameters.iterations_numbers,
         )
