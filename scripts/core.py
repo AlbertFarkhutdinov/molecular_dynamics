@@ -124,6 +124,7 @@ class MolecularDynamics:
             stage_id=2
         )
         parameters.update({
+            'time': self.system.time,
             'kinetic_energy': self.system.configuration.kinetic_energy,
             'temperature': self.system.configuration.get_temperature(
                 kinetic_energy=parameters['kinetic_energy']
@@ -232,6 +233,7 @@ class MolecularDynamics:
         start = datetime.now()
         system_parameters = get_parameters_dict(
             names=(
+                'time',
                 'temperature',
                 'pressure',
                 'kinetic_energy',

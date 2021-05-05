@@ -8,8 +8,8 @@
  + implement entropy `S` and other thermodynamic potentials;
    + U(S, V) = sum of kinetic and potential energies (`total_energy`);
    + H(S, P) = U + PV - enthalpy;
-   + F(S, V) = U - TS - free energy;
-   + G(S, V) = U + PV - TS - Gibbs energy;
+   + F(V, T) = U - TS - free energy;
+   + G(T, P) = U + PV - TS - Gibbs energy;
    + dS = (dU + PdV) / T;
    + dH = TdS + VdP;
    + dF = -PdV - SdT;

@@ -173,7 +173,9 @@ class PostProcessor:
             self,
             x, y,
             x_label, y_label,
-            plot_filename_prefix, **limits,
+            plot_filename_prefix,
+            y_scale="linear",
+            **limits,
     ):
         for i, setup in enumerate(self.setups):
             plt.plot(
@@ -191,65 +193,96 @@ class PostProcessor:
             bottom=limits.get('bottom'),
             top=limits.get('top'),
         )
+        plt.yscale(y_scale)
         plt.legend()
         self.save_plot(
             filename=f'{plot_filename_prefix}_{self.plot_filename_postfix}.png'
         )
 
-    def plot_rdf(self, **limits):
+    def plot_rdf(
+            self,
+            shift=0,
+            y_scale='linear',
+            **limits,
+    ):
         self.plot_setups(
             x=self.rdf.data['radius'],
             y=lambda x: (
                     self.rdf.data[f'setup_{x}']
-                    + 1 * (len(self.setups) - (x + 1))
+                    + shift * (len(self.setups) - (x + 1))
             ),
             x_label=r'$r$, $\sigma $',
             y_label='$g(r)$',
+            y_scale=y_scale,
             plot_filename_prefix='rdf',
             **limits,
         )
 
-    def plot_msd(self, **limits):
+    def plot_msd(
+            self,
+            y_scale="linear",
+            **limits,
+    ):
         self.plot_setups(
             x=self.msd.data['time'],
             y=lambda x: self.msd.data[f'setup_{x}'],
             x_label=r'$t$, $\tau $',
             y_label=r'$\left<\Delta r^2(t)\right>$, $\sigma^2$',
+            y_scale=y_scale,
             plot_filename_prefix='msd',
             **limits,
         )
 
-    def plot_vaf(self, **limits):
+    def plot_vaf(
+            self,
+            y_scale="linear",
+            **limits,
+    ):
         self.plot_setups(
             x=self.vaf.data['time'],
             y=lambda x: self.vaf.data[f'setup_{x}'],
             x_label=r'$t$, $\tau $',
             y_label=r'$\Psi(t)$, $\sigma^2$',
+            y_scale=y_scale,
             plot_filename_prefix='vaf',
             **limits,
         )
 
-    def plot_einstein_diffusion(self, **limits):
+    def plot_einstein_diffusion(
+            self,
+            y_scale="linear",
+            **limits,
+    ):
         self.plot_setups(
             x=self.einstein_diffusion.data['time'],
             y=lambda x: self.einstein_diffusion.data[f'setup_{x}'],
             x_label=r'$t$, $\tau $',
             y_label=r'$D_E(t)$, $\sigma^2 / \tau$',
+            y_scale=y_scale,
             plot_filename_prefix='diffusion_einstein',
             **limits,
         )
 
-    def plot_gk_diffusion(self, **limits):
+    def plot_gk_diffusion(
+            self,
+            y_scale="linear",
+            **limits,
+    ):
         self.plot_setups(
             x=self.gk_diffusion.data['time'],
             y=lambda x: self.gk_diffusion.data[f'setup_{x}'],
             x_label=r'$t$, $\tau $',
             y_label=r'$D_{GK}(t)$, $\sigma^2 / \tau$',
+            y_scale=y_scale,
             plot_filename_prefix='diffusion_gk',
             **limits,
         )
 
-    def plot_diffusion(self, **limits):
+    def plot_diffusion(
+            self,
+            y_scale="linear",
+            **limits,
+    ):
         plt.scatter(
             np.array([setup['temperature'] for setup in self.setups]),
             self.diffusion_coefficients,
@@ -264,6 +297,7 @@ class PostProcessor:
             bottom=limits.get('bottom'),
             top=limits.get('top'),
         )
+        plt.yscale(y_scale)
         self.save_plot(
             filename=f'diffusion_{self.plot_filename_postfix}.png'
         )
@@ -298,6 +332,8 @@ class PostProcessor:
             self,
             column_names,
             y_label,
+            y_scale="linear",
+            file_name_prefix=None,
             **limits,
     ):
 
@@ -319,9 +355,13 @@ class PostProcessor:
             bottom=limits.get('bottom'),
             top=limits.get('top'),
         )
+        plt.yscale(y_scale)
+        prefix = column_names[0]
         if len(column_names) > 1:
             plt.legend(markerscale=10)
-        prefix = column_names[0] if len(column_names) == 1 else 'all'
+            if file_name_prefix is None:
+                raise ValueError('`file_name_prefix` is absent.')
+            prefix = file_name_prefix
         self.save_plot(
             f'{prefix}_{self.plot_filename_postfix}.png'
         )
@@ -359,6 +399,7 @@ class PostProcessor:
                ) / self.system_parameters['temperature']
 
     def get_entropy(self):
+        # TODO entropy tend to be negative after cooling to T = 0
         self.get_entropy_diff()
         self.system_parameters['entropy'] = 0.0
         for i in self.system_parameters.index:

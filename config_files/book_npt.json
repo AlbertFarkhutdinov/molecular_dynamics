@@ -4,7 +4,7 @@
     "lattice_constant": 1.75,
     "particles_numbers": [7, 7, 7],
     "crystal_type": "FCC",
-    "file_name": "2020-12-22_heating/system_configuration.csv"
+    "file_name": "2021-05-05_nvt_heating/system_configuration_2021_05_05_13_07_31.csv"
   },
   "immutables": {
     "time_step": 0.005,

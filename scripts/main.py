@@ -35,7 +35,7 @@ if __name__ == '__main__':
 
     main(
         config_filenames=[
-            'nve.json',
+            'book_npt.json',
         ],
         is_with_isotherms=True,
     )

@@ -58,11 +58,13 @@ class Initializer:
             0,
             'particles_number',
         ]
-        self.system.positions = _configuration[['x', 'y', 'z']].to_numpy()
-        self.system.velocities = _configuration[
+        self.system.configuration.positions = _configuration[
+            ['x', 'y', 'z']
+        ].to_numpy()
+        self.system.configuration.velocities = _configuration[
             ['v_x', 'v_y', 'v_z']
         ].to_numpy()
-        self.system.accelerations = _configuration[
+        self.system.configuration.accelerations = _configuration[
             ['a_x', 'a_y', 'a_z']
         ].to_numpy()
         self.system.time = _configuration.loc[0, 'time']
