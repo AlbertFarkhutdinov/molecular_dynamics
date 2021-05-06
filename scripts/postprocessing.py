@@ -399,7 +399,7 @@ class PostProcessor:
                ) / self.system_parameters['temperature']
 
     def get_entropy(self):
-        # TODO entropy tend to be negative after cooling to T = 0
+        # TODO entropy is negative after cooling to T = 0
         self.get_entropy_diff()
         self.system_parameters['entropy'] = 0.0
         for i in self.system_parameters.index:

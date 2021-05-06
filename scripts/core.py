@@ -92,8 +92,10 @@ class MolecularDynamics:
 
     def get_integrator(self):
         integrator = {
+            'mtk': MTTK,
             'mttk': MTTK,
             'velocity_scaling': VelocityScaling,
+            'velocity_rescaling': VelocityScaling,
         }.get(self.externals.environment_type, NVE)
         return integrator(
             system=self.initials,

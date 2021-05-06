@@ -40,6 +40,7 @@ class BaseIntegrator(ABC):
             kinetic_energy=kinetic_energy,
         )
         volume = self.system.volume
+        print(volume)
         density = self.system.get_density(volume=volume)
         pressure = self.system.get_pressure(
             temperature=temperature,
