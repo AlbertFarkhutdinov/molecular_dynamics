@@ -1,7 +1,7 @@
 import numpy as np
 
 from scripts.integrators.base_integrator import BaseIntegrator
-from scripts.log_config import logger_wraps
+from scripts.log_config import logger_wraps, log_debug_info
 
 
 class MTTK(BaseIntegrator):
@@ -30,6 +30,17 @@ class MTTK(BaseIntegrator):
         )
         for k in range(1, self.thermostats_number):
             self.g_nvt[k] = self.get_g_nvt_k(k=k)
+        log_debug_info(f'self.npt_factor = {self.npt_factor}')
+        log_debug_info(f'self.nvt_factors = {self.nvt_factors}')
+        log_debug_info(f'self.xis = {self.xis}')
+        log_debug_info(f'self.epsilon = {self.epsilon}')
+        log_debug_info(f'self.thermostats_number = {self.thermostats_number}')
+        log_debug_info(f'system_kinetic_energy = {kinetic_energy}')
+        log_debug_info(f'self.g_npt = {self.g_npt}')
+        log_debug_info(f'self.g_nvt = {self.g_nvt}')
+        log_debug_info(f'positions mean = {self.system.configuration.positions.mean()}')
+        log_debug_info(f'velocities mean = {self.system.configuration.velocities.mean()}')
+        log_debug_info(f'accelerations mean = {self.system.configuration.accelerations.mean()}')
 
     @logger_wraps()
     def stage_1(self):
