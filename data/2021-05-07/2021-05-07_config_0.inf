@@ -3,7 +3,8 @@
     "init_type": -1,
     "lattice_constant": 1.75,
     "crystal_type": "FCC",
-    "file_name": "2021-02-11_heating/system_configuration.csv"
+    "file_name": "2021-02-11_heating/system_configuration.csv",
+    "temperature": 2.8
   },
   "immutables": {
     "time_step": 0.005,

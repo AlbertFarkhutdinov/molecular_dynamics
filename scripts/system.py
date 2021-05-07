@@ -6,6 +6,7 @@ import numpy as np
 from scripts.constants import PATH_TO_DATA
 from scripts.helpers import get_date
 from scripts.numba_procedures import get_boundary_conditions
+from scripts.log_config import log_debug_info
 
 
 class Configuration:
@@ -90,6 +91,11 @@ class System:
         _virial = virial or self.virial
         _volume = volume or self.volume
         pressure = _density * _temperature + _virial / (3 * _volume)
+        log_debug_info(f'_density = {_density}')
+        log_debug_info(f'_temperature = {_temperature}')
+        log_debug_info(f'_virial = {_virial}')
+        log_debug_info(f'_volume = {_volume}')
+        log_debug_info(f'pressure = {pressure}')
         self.pressure = pressure
         return pressure
 
