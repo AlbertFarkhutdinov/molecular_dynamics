@@ -56,11 +56,9 @@ class MTTK(BaseIntegrator):
                 self.system.configuration.velocities * _b
         )
         self.epsilon += self.npt_factor * self.time_step
-        print(self.system.cell_dimensions)
         self.system.cell_dimensions = (
                 np.ones(3) * (3 * np.exp(self.epsilon)) ** (1 / 3)
         )
-        print(self.system.cell_dimensions)
 
     @logger_wraps()
     def stage_2(self):
