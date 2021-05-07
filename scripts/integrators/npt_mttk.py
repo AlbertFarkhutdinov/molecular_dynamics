@@ -138,6 +138,10 @@ class MTTK(BaseIntegrator):
             volume=volume,
             density=density,
         )
+        log_debug_info('get_g_npt(kinetic_energy)')
+        log_debug_info(f'volume = {volume}')
+        log_debug_info(f'density = {density}')
+        log_debug_info(f'internal_pressure = {internal_pressure}')
         return (
                        1 / self.system.configuration.particles_number
                        * 2 * kinetic_energy
