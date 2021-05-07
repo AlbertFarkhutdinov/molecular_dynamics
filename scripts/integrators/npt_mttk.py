@@ -134,13 +134,16 @@ class MTTK(BaseIntegrator):
     ):
         volume = self.system.volume
         density = self.system.get_density(volume=volume)
+        temperature = self.system.configuration.get_temperature()
         internal_pressure = self.system.get_pressure(
             volume=volume,
             density=density,
+            temperature=temperature,
         )
         log_debug_info('get_g_npt(kinetic_energy)')
         log_debug_info(f'volume = {volume}')
         log_debug_info(f'density = {density}')
+        log_debug_info(f'temperature = {temperature}')
         log_debug_info(f'internal_pressure = {internal_pressure}')
         return (
                        1 / self.system.configuration.particles_number
