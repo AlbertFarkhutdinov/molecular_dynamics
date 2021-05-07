@@ -269,7 +269,9 @@ class MolecularDynamics:
             log_debug_info(f'End of step {step}.\n')
 
             if self.is_with_isotherms:
-                isotherm_steps = (1, )
+                isotherm_steps = (
+                    # 1,
+                )
                 if (
                         not (step % self.sim_parameters.isotherm_saving_step)
                         or step in isotherm_steps

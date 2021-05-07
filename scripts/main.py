@@ -35,7 +35,7 @@ if __name__ == '__main__':
     # TODO NPT
     main(
         config_filenames=[
-            'book_npt.json',
+            'test_npt.json',
         ],
         is_with_isotherms=True,
     )
