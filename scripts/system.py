@@ -109,6 +109,7 @@ class System:
         log_debug_info(f'positions.min() = {_positions.min()}')
         log_debug_info(f'positions.mean() = {_positions.mean()}')
         log_debug_info(f'positions.max() = {_positions.max()}')
+        # TODO fix PBC
         self.configuration.positions = get_boundary_conditions(
             cell_dimensions=self.cell_dimensions,
             particles_number=self.configuration.particles_number,
