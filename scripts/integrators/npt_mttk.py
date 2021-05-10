@@ -63,9 +63,19 @@ class MTTK(BaseIntegrator):
                 + arg_2 ** 4 / fact_9
         )
         _b = _a * poly * self.time_step
+        log_debug_info(
+            f'positions mean = {self.system.configuration.positions.mean()}'
+        )
         self.system.configuration.positions *= _a_2
+        log_debug_info(
+            f'positions mean = {self.system.configuration.positions.mean()}'
+        )
+
         self.system.configuration.positions += (
                 self.system.configuration.velocities * _b
+        )
+        log_debug_info(
+            f'positions mean = {self.system.configuration.positions.mean()}'
         )
         self.epsilon += self.npt_factor * self.time_step
         self.system.cell_dimensions = (

@@ -64,7 +64,7 @@ class AccelerationsCalculator:
         log_debug_info(
             f'last_neighbours.max() = {self.neighbours_lists["last_neighbours"].max()}'
         )
-        log_debug_info(f'potential_energies = {potential_energies}')
+        log_debug_info(f'potential_energies.mean() = {potential_energies.mean()}')
         log_debug_info(
             f'positions.mean() = {self.system.configuration.positions.mean()}'
         )
