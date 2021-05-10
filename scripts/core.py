@@ -29,25 +29,30 @@ class MolecularDynamics:
             is_with_isotherms: bool = True,
             is_msd_calculated: bool = True,
     ):
-        print(f'Initialization of {self.__class__.__name__} instance.')
+        log_debug_info(f'{self.__class__.__name__} instance initialization.')
+        print(f'{self.__class__.__name__} instance initialization.')
         config_parameters = get_config_parameters(config_filename)
 
         self.system = System()
+        log_debug_info(f'System is created.')
         print(f'System is created.')
         self.initials = Initializer(
             system=self.system,
             **config_parameters["initials"],
         ).get_initials()
+        log_debug_info(f'Initial parameters are received.')
         print(f'Initial parameters are received.')
         self.immutables = ImmutableParameters(
             particles_number=self.initials.configuration.particles_number,
             **config_parameters["immutables"],
         )
+        log_debug_info(f'Immutable parameters are received.')
         print(f'Immutable parameters are received.')
         self.accelerations_calculator = AccelerationsCalculator(
             system=self.initials,
             immutables=self.immutables,
         )
+        log_debug_info(f'Accelerations Calculator is initialized.')
         print(f'Accelerations Calculator is initialized.')
         self.is_with_isotherms = is_with_isotherms
         self.is_msd_calculated = is_msd_calculated
@@ -69,6 +74,7 @@ class MolecularDynamics:
         self.externals, self.integrator = None, None
         self.sim_parameters, self.saver = None, None
         self.update_simulation_parameters(config_parameters)
+        log_debug_info(f'Simulation parameters are updated.')
         print(f'Simulation parameters are updated.')
 
     def update_simulation_parameters(self, config_parameters):

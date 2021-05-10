@@ -7,6 +7,7 @@ from scripts.log_config import logger_wraps, log_debug_info
 class MTTK(BaseIntegrator):
 
     def __init__(self, **integrator_kwargs):
+        log_debug_info(f'{self.__class__.__name__} instance initialization.')
         super().__init__(**integrator_kwargs)
         self.npt_factor = 0.0
         self.nvt_factors = np.zeros(
@@ -76,6 +77,7 @@ class MTTK(BaseIntegrator):
         self.get_next_velocities()
         self.nose_hoover_chain()
 
+    @logger_wraps()
     def nose_hoover_chain(self):
         scale, time_step_divider, n_ys = 1.0, 1, 3
         _w = self.get_w(n_ys=n_ys)
@@ -111,6 +113,7 @@ class MTTK(BaseIntegrator):
                     step=_step,
                 )
 
+    @logger_wraps()
     def get_g_nvt_0(self, kinetic_energy: float):
         return (
                        2 * kinetic_energy
@@ -120,6 +123,7 @@ class MTTK(BaseIntegrator):
                        * self.external.temperature
                ) / self.external.thermostat_parameters[0]
 
+    @logger_wraps()
     def get_g_nvt_k(self, k: int):
         return (
                        self.external.thermostat_parameters[k - 1]
@@ -128,6 +132,7 @@ class MTTK(BaseIntegrator):
                        - self.external.temperature
                ) / self.external.thermostat_parameters[k]
 
+    @logger_wraps()
     def get_g_npt(
             self,
             kinetic_energy: float,
@@ -140,7 +145,6 @@ class MTTK(BaseIntegrator):
             density=density,
             temperature=temperature,
         )
-        log_debug_info('get_g_npt(kinetic_energy)')
         log_debug_info(f'volume = {volume}')
         log_debug_info(f'density = {density}')
         log_debug_info(f'temperature = {temperature}')
@@ -152,6 +156,7 @@ class MTTK(BaseIntegrator):
                        * (internal_pressure - self.external.pressure)
                ) / self.external.barostat_parameter
 
+    @logger_wraps()
     def do_liouville_nvt_last(
             self,
             step: float,
@@ -160,6 +165,7 @@ class MTTK(BaseIntegrator):
             self.thermostats_number - 1
         ] += self.g_nvt[self.thermostats_number - 1] * step / 4
 
+    @logger_wraps()
     def do_liouville_nvt_not_last(
             self,
             step: float,
@@ -175,6 +181,7 @@ class MTTK(BaseIntegrator):
                 self.g_nvt[j + 1] = self.get_g_nvt_k(k=j + 1)
         return self.g_nvt
 
+    @logger_wraps()
     def do_liouville_npt(
             self,
             step: float,
@@ -184,6 +191,7 @@ class MTTK(BaseIntegrator):
         self.npt_factor += self.g_npt * step / 4
         self.npt_factor *= _factor
 
+    @logger_wraps()
     def do_liouville_velocities(
             self,
             step: float,
@@ -207,6 +215,7 @@ class MTTK(BaseIntegrator):
         )
         return scale, kinetic_energy
 
+    @logger_wraps()
     def do_liouville_xis(
             self,
             step: float,
@@ -215,6 +224,7 @@ class MTTK(BaseIntegrator):
             self.xis[j] += self.nvt_factors[j] * step / 2
 
     @staticmethod
+    @logger_wraps()
     def get_w(n_ys: int = 1):
         _w = np.array([1.0])
         if n_ys == 3:

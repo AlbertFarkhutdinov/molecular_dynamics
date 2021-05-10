@@ -15,6 +15,7 @@ class BaseIntegrator(ABC):
             time_step: float,
             external: Optional[ExternalParameters] = None,
     ) -> None:
+        log_debug_info(f'{self.__class__.__name__} instance initialization.')
         self.system = system
         self.time_step = time_step
         self.external = external

@@ -4,8 +4,10 @@ import numpy as np
 
 from scripts.core import MolecularDynamics
 from scripts.helpers import get_config_parameters, save_config_parameters
+from scripts.log_config import logger_wraps
 
 
+@logger_wraps()
 def main(
         config_filenames: List[str],
         is_with_isotherms: bool = True,

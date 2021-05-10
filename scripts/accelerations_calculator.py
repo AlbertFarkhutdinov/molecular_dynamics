@@ -14,7 +14,9 @@ class AccelerationsCalculator:
             immutables: ImmutableParameters,
             system: System,
     ):
+        log_debug_info(f'{self.__class__.__name__} instance initialization.')
         self.immutables = immutables
+        log_debug_info(f'Immutables = {self.immutables}')
         self.system = system
         self.neighbours_lists = {
             'all_neighbours': get_empty_int_scalars(
@@ -32,8 +34,8 @@ class AccelerationsCalculator:
             self.immutables.particles_number
         )
 
+    @logger_wraps()
     def load_forces(self):
-        log_debug_info('Entering `load_forces(potential_table)`')
         potential_energies = get_empty_float_scalars(
             self.immutables.particles_number
         )
@@ -48,6 +50,7 @@ class AccelerationsCalculator:
             )
             self.update_test = False
 
+        log_debug_info(f'Virial = {self.system.virial}')
         self.system.virial = lf_cycle(
             particles_number=self.immutables.particles_number,
             r_cut=self.immutables.r_cut,
@@ -60,6 +63,7 @@ class AccelerationsCalculator:
             positions=self.system.configuration.positions,
             accelerations=self.system.configuration.accelerations,
         )
+        log_debug_info(f'Virial = {self.system.virial}')
         acc_mag = (
                           self.system.configuration.accelerations ** 2
                   ).sum(axis=1) ** 0.5
@@ -75,8 +79,8 @@ class AccelerationsCalculator:
                 * self.immutables.time_step / 2.0
         )
         self.load_move_test()
+        log_debug_info(f'Mean potential: {potential_energies.mean()};')
         log_debug_info(f'Potential energy: {potential_energy};')
-        log_debug_info('Exiting `load_forces(potential_table)`')
         self.system.potential_energy = potential_energy
 
     @logger_wraps()
