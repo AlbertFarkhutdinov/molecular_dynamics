@@ -100,16 +100,23 @@ class System:
         return pressure
 
     def apply_boundary_conditions(self, positions=None) -> None:
+        log_debug_info(f'apply_boundary_conditions')
         _positions = (
             self.configuration.positions
             if positions is None
             else positions
         )
+        log_debug_info(f'positions.min() = {_positions.min()}')
+        log_debug_info(f'positions.mean() = {_positions.mean()}')
+        log_debug_info(f'positions.max() = {_positions.max()}')
         self.configuration.positions = get_boundary_conditions(
             cell_dimensions=self.cell_dimensions,
             particles_number=self.configuration.particles_number,
             positions=_positions,
         )
+        log_debug_info(f'positions.min() = {_positions.min()}')
+        log_debug_info(f'positions.mean() = {_positions.mean()}')
+        log_debug_info(f'positions.max() = {_positions.max()}')
 
     def save_xyz_file(self, filename: str, step: int):
         _path = os.path.join(
