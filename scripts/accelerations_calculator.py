@@ -50,6 +50,27 @@ class AccelerationsCalculator:
             )
             self.update_test = False
 
+        log_debug_info(
+            f'particles_number = {self.immutables.particles_number}'
+        )
+        log_debug_info(f'r_cut = {self.immutables.r_cut}')
+        log_debug_info(f'cell_dimensions = {self.system.cell_dimensions}')
+        log_debug_info(
+            f'all_neighbours.max() = {self.neighbours_lists["all_neighbours"].max()}'
+        )
+        log_debug_info(
+            f'first_neighbours.max() = {self.neighbours_lists["first_neighbours"].max()}'
+        )
+        log_debug_info(
+            f'last_neighbours.max() = {self.neighbours_lists["last_neighbours"].max()}'
+        )
+        log_debug_info(f'potential_energies = {potential_energies}')
+        log_debug_info(
+            f'positions.mean() = {self.system.configuration.positions.mean()}'
+        )
+        log_debug_info(
+            f'accelerations.mean() = {self.system.configuration.accelerations.mean()}'
+        )
         log_debug_info(f'Virial = {self.system.virial}')
         self.system.virial = lf_cycle(
             particles_number=self.immutables.particles_number,
