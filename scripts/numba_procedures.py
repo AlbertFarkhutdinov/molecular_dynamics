@@ -160,7 +160,7 @@ def get_time_displacements(positions_1, positions_2, distances):
     return distances
 
 
-# @nb.njit
+@nb.njit
 def lf_cycle(
         particles_number,
         all_neighbours,
@@ -180,7 +180,7 @@ def lf_cycle(
                 last_neighbours[i] + 1,
         ):
             j = all_neighbours[k]
-            log_debug_info(f'{i}, {j}')
+            # log_debug_info(f'{i}, {j}')
             radius_vector, distance = get_radius_vector(
                 index_1=i,
                 index_2=j,
@@ -189,16 +189,16 @@ def lf_cycle(
             )
             if distance < r_cut:
                 table_row = int(math_round((distance - 0.5) / 0.0001))
-                log_debug_info(f'table_row = {table_row}')
+                # log_debug_info(f'table_row = {table_row}')
                 potential_ij = potential_table[table_row - 1, 0]
-                log_debug_info(f'potential_ij = {potential_ij}')
+                # log_debug_info(f'potential_ij = {potential_ij}')
                 force_ij = potential_table[table_row - 1, 1]
-                log_debug_info(f'force_ij = {force_ij}')
+                # log_debug_info(f'force_ij = {force_ij}')
                 potential_energies[i] += potential_ij / 2.0
                 potential_energies[j] += potential_ij / 2.0
-                log_debug_info(
-                    f'potential_energies = {potential_energies[i]}, {potential_energies[j]}',
-                )
+                # log_debug_info(
+                #     f'potential_energies = {potential_energies[i]}, {potential_energies[j]}',
+                # )
                 acceleration_ij = force_ij * radius_vector
                 virial += force_ij * distance * distance / 2
                 accelerations[i] += acceleration_ij

@@ -73,22 +73,22 @@ class AccelerationsCalculator:
             f'accelerations.mean() = {self.system.configuration.accelerations.mean()}'
         )
         log_debug_info(
-            f'potential_table[0].min() = {self.immutables.potential_table[0].min()}'
+            f'potential_table[:, 0].min() = {self.immutables.potential_table[:, 0].min()}'
         )
         log_debug_info(
-            f'potential_table[0].mean() = {self.immutables.potential_table[0].mean()}'
+            f'potential_table[:, 0].mean() = {self.immutables.potential_table[:, 0].mean()}'
         )
         log_debug_info(
-            f'potential_table[0].max() = {self.immutables.potential_table[0].max()}'
+            f'potential_table[:, 0].max() = {self.immutables.potential_table[:, 0].max()}'
         )
         log_debug_info(
-            f'potential_table[1].min() = {self.immutables.potential_table[1].min()}'
+            f'potential_table[:, 1].min() = {self.immutables.potential_table[:, 1].min()}'
         )
         log_debug_info(
-            f'potential_table[1].mean() = {self.immutables.potential_table[1].mean()}'
+            f'potential_table[:, 1].mean() = {self.immutables.potential_table[:, 1].mean()}'
         )
         log_debug_info(
-            f'potential_table[1].max() = {self.immutables.potential_table[1].max()}'
+            f'potential_table[:, 1].max() = {self.immutables.potential_table[:, 1].max()}'
         )
         log_debug_info(f'Virial = {self.system.virial}')
         log_debug_info(f'Mean potential: {potential_energies.mean()};')
