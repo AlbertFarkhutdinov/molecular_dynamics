@@ -84,12 +84,35 @@ class MTTK(BaseIntegrator):
 
     @logger_wraps()
     def stage_2(self):
+        # TODO repeat initialization?
+        self.npt_factor = 0.0
+        self.nvt_factors = np.zeros(
+            self.external.thermostat_parameters.size,
+            dtype=np.float,
+        )
+        self.xis = np.zeros(
+            self.external.thermostat_parameters.size,
+            dtype=np.float,
+        )
+        self.epsilon = np.log(self.system.volume / 3)
+        self.thermostats_number = self.external.thermostat_parameters.size
+
+        kinetic_energy = self.system.configuration.kinetic_energy
+        self.g_npt = self.get_g_npt(
+            kinetic_energy=kinetic_energy,
+        )
+        self.g_nvt = np.zeros(self.thermostats_number, dtype=np.float)
+        self.g_nvt[0] = self.get_g_nvt_0(
+            kinetic_energy=kinetic_energy,
+        )
+        for k in range(1, self.thermostats_number):
+            self.g_nvt[k] = self.get_g_nvt_k(k=k)
         log_debug_info(f'self.npt_factor = {self.npt_factor}')
         log_debug_info(f'self.nvt_factors = {self.nvt_factors}')
         log_debug_info(f'self.xis = {self.xis}')
         log_debug_info(f'self.epsilon = {self.epsilon}')
         log_debug_info(f'self.thermostats_number = {self.thermostats_number}')
-        log_debug_info(f'system_kinetic_energy = {system_kinetic_energy}')
+        log_debug_info(f'system_kinetic_energy = {self.system.configuration.kinetic_energy}')
         log_debug_info(f'self.g_npt = {self.g_npt}')
         log_debug_info(f'self.g_nvt = {self.g_nvt}')
         log_debug_info(
