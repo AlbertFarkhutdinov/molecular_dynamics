@@ -1,6 +1,8 @@
 import numba as nb
 import numpy as np
 
+from scripts.log_config import log_debug_info
+
 
 @nb.njit
 def math_round(value):
@@ -284,6 +286,7 @@ def get_boundary_conditions(
 ):
     for i in range(particles_number):
         for j in range(3):
+            log_debug_info(i, j, cell_dimensions[j], positions[i][j])
             if positions[i][j] >= cell_dimensions[j] / 2.0:
                 positions[i][j] -= (
                         math_round(positions[i][j] / cell_dimensions[j])
@@ -294,6 +297,7 @@ def get_boundary_conditions(
                         math_round(positions[i][j] / cell_dimensions[j])
                         * cell_dimensions[j]
                 )
+            log_debug_info(positions[i][j])
     return positions
 
 
