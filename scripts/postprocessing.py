@@ -1,9 +1,12 @@
+from copy import deepcopy
 import os
 from typing import Dict, List
 
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+from sklearn.linear_model import LinearRegression
+from sklearn.metrics import mean_squared_error
 
 
 class BasePP:
@@ -174,29 +177,39 @@ class PostProcessor:
             x, y,
             x_label, y_label,
             plot_filename_prefix,
+            figsize,
             y_scale="linear",
+            title=None,
+            filename_postfix='',
             **limits,
     ):
+        fig, ax = plt.subplots(figsize=figsize)
         for i, setup in enumerate(self.setups):
-            plt.plot(
+            ax.plot(
                 x,
                 y(i),
                 label=fr'T = {setup["temperature"]:.5f} $\epsilon / k_B$'
             )
-        plt.xlabel(x_label)
-        plt.ylabel(y_label)
-        plt.xlim(
+        ax.set_xlabel(x_label)
+        ax.set_ylabel(y_label)
+        ax.set_xlim(
             left=limits.get('left'),
             right=limits.get('right'),
         )
-        plt.ylim(
+        ax.set_ylim(
             bottom=limits.get('bottom'),
             top=limits.get('top'),
         )
-        plt.yscale(y_scale)
-        plt.legend()
+        ax.set_yscale(y_scale)
+        ax.legend()
+        if title:
+            ax.set_title(title)
         self.save_plot(
-            filename=f'{plot_filename_prefix}_{self.plot_filename_postfix}.png'
+            filename=(
+                f'{plot_filename_prefix}'
+                f'_{self.plot_filename_postfix}'
+                f'_{filename_postfix}.png'
+            )
         )
 
     def plot_rdf(
@@ -437,3 +450,117 @@ class PostProcessor:
             * self.system_parameters['entropy']
         )
         return self.system_parameters['gibbs_energy']
+
+
+class RegressionRDF:
+
+    def __init__(self, post_processor, setups, test_temperatures):
+        self.post_processor = post_processor
+        self.rdf_table = self.get_rdf_table()
+        self.setups = setups
+        self.temperatures = self.get_temperatures_from_indices()
+        self.test_temperatures = test_temperatures
+
+    def get_rdf_table(self):
+        rdf_table = deepcopy(self.post_processor.rdf.data)
+        rdf_table.index = rdf_table['radius']
+        rdf_table = rdf_table.drop(columns=['radius'])
+        rdf_table = rdf_table.T[::-1]
+        return rdf_table
+
+    def get_temperatures_from_indices(self):
+        return np.array(
+            [
+                self.setups[value]['temperature']
+                for value
+                in self.rdf_table.index.str[6:].values.astype(np.int32)
+            ]
+        )
+
+    @staticmethod
+    def get_linear_coefficients(x_train, y_train):
+        regression = LinearRegression()
+        regression.fit(x_train.reshape((x_train.size, 1)), y_train)
+        return regression.coef_[0], regression.intercept_
+
+    def fit_data(self, y_train):
+        k, b = self.get_linear_coefficients(
+            x_train=self.temperatures,
+            y_train=y_train,
+        )
+        fitted_data = k * self.temperatures + b
+        error = mean_squared_error(y_train, fitted_data, squared=False)
+        return fitted_data, error
+
+    def plot_linear_regression(
+            self,
+            y_train,
+            fitted_data, error,
+            k, b, r,
+            is_saved,
+    ):
+        fig, ax = plt.subplots(figsize=(10, 5))
+        ax.errorbar(
+            self.temperatures,
+            y_train,
+            yerr=error,
+            fmt='o',
+            label=fr'$g(r = {r})$',
+        )
+        ax.plot(
+            self.temperatures,
+            fitted_data,
+            label=fr'{k:.4f}$T$ {"+" if b >= 0 else "-"} {abs(b):.4f}'
+        )
+        ax.legend()
+        ax.set_xlabel(r'Temperature, $\epsilon / k_B$')
+        ax.set_ylabel('$g(r)$')
+        plt.show()
+        if is_saved:
+            self.post_processor.save_plot(
+                f'rdf_point_{self.post_processor.plot_filename_postfix}.png'
+            )
+        plt.close()
+
+    def get_fitted_column(self, y_train):
+        k, b = self.get_linear_coefficients(
+            x_train=self.temperatures,
+            y_train=y_train,
+        )
+        fitted_data, error = self.fit_data(y_train)
+        return k, b, fitted_data, error
+
+    def run_linear_regressions(
+            self,
+            is_printed: bool,
+            is_plotted: bool,
+    ):
+        predicted_points = {key: [] for key in self.test_temperatures}
+        for column in self.rdf_table.columns:
+            if not (self.rdf_table[column] == 0).all():
+                y = self.rdf_table[column]
+                k, b, fitted_data, error = self.get_fitted_column(y_train=y)
+                for key, _ in predicted_points.items():
+                    new_point = k * key + b
+                    predicted_points[key].append(new_point)
+
+                if is_printed:
+                    print(
+                        f'r = {column:.2f}; '
+                        f'k = {k:8.5f}; '
+                        f'b = {b:8.5f}; '
+                        f'RMSE = {error:.5f}'
+                    )
+
+                if is_plotted:
+                    self.plot_linear_regression(
+                        y_train=y,
+                        fitted_data=fitted_data,
+                        error=error,
+                        k=k, b=b, r=column,
+                        is_saved=False,
+                    )
+            else:
+                for key, _ in predicted_points.items():
+                    predicted_points[key].append(0.0)
+        return predicted_points
