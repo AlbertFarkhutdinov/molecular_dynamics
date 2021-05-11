@@ -13,6 +13,7 @@ class LennardJones(BasePotential):
     def get_energies_and_forces(self):
         # forces - это величины -dU/rdr.
         # Сила получается умножением на вектор r_ij
+        # TODO MTTK works with self.r_cut = 1.0 but not with 2.5
         sigma_pow6, epsilon_x4, r_cut = self.sigma ** 6, self.epsilon * 4, 1.0#self.r_cut
         log_debug_info(
             'sigma_pow6, epsilon_x4, r_cut, table_size = '

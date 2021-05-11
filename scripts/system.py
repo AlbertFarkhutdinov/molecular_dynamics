@@ -109,6 +109,7 @@ class System:
         )
         log_debug_info(f'positions.mean() = {_positions.mean()}')
         self.configuration.positions = get_boundary_conditions(
+            # TODO MTTK works with self.initial_cell_dimensions but not with self.cell_dimensions
             cell_dimensions=self.initial_cell_dimensions,
             particles_number=self.configuration.particles_number,
             positions=_positions,

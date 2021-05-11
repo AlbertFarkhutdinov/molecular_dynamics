@@ -9,6 +9,21 @@ class MTTK(BaseIntegrator):
     def __init__(self, **integrator_kwargs):
         log_debug_info(f'{self.__class__.__name__} instance initialization.')
         super().__init__(**integrator_kwargs)
+        self.npt_factor = None
+        self.nvt_factors = None
+        self.xis = None
+        self.g_npt = None
+        self.g_nvt = None
+        self.epsilon = np.log(self.system.volume / 3)
+        self.thermostats_number = self.external.thermostat_parameters.size
+        self.init_integrator_parameters()
+        log_debug_info(f'self.epsilon = {self.epsilon}')
+        log_debug_info(f'self.thermostats_number = {self.thermostats_number}')
+        log_debug_info(f'positions mean = {self.system.configuration.positions.mean()}')
+        log_debug_info(f'velocities mean = {self.system.configuration.velocities.mean()}')
+        log_debug_info(f'accelerations mean = {self.system.configuration.accelerations.mean()}')
+
+    def init_integrator_parameters(self):
         self.npt_factor = 0.0
         self.nvt_factors = np.zeros(
             self.external.thermostat_parameters.size,
@@ -18,9 +33,6 @@ class MTTK(BaseIntegrator):
             self.external.thermostat_parameters.size,
             dtype=np.float,
         )
-        self.epsilon = np.log(self.system.volume / 3)
-        self.thermostats_number = self.external.thermostat_parameters.size
-
         kinetic_energy = self.system.configuration.kinetic_energy
         self.g_npt = self.get_g_npt(
             kinetic_energy=kinetic_energy,
@@ -34,17 +46,14 @@ class MTTK(BaseIntegrator):
         log_debug_info(f'self.npt_factor = {self.npt_factor}')
         log_debug_info(f'self.nvt_factors = {self.nvt_factors}')
         log_debug_info(f'self.xis = {self.xis}')
-        log_debug_info(f'self.epsilon = {self.epsilon}')
-        log_debug_info(f'self.thermostats_number = {self.thermostats_number}')
         log_debug_info(f'system_kinetic_energy = {kinetic_energy}')
         log_debug_info(f'self.g_npt = {self.g_npt}')
         log_debug_info(f'self.g_nvt = {self.g_nvt}')
-        log_debug_info(f'positions mean = {self.system.configuration.positions.mean()}')
-        log_debug_info(f'velocities mean = {self.system.configuration.velocities.mean()}')
-        log_debug_info(f'accelerations mean = {self.system.configuration.accelerations.mean()}')
 
     @logger_wraps()
     def stage_1(self):
+        # TODO need to init again?
+        self.init_integrator_parameters()
         self.nose_hoover_chain()
         fact_3 = 6
         fact_5 = fact_3 * 20
@@ -84,47 +93,8 @@ class MTTK(BaseIntegrator):
 
     @logger_wraps()
     def stage_2(self):
-        # TODO repeat initialization?
-        self.npt_factor = 0.0
-        self.nvt_factors = np.zeros(
-            self.external.thermostat_parameters.size,
-            dtype=np.float,
-        )
-        self.xis = np.zeros(
-            self.external.thermostat_parameters.size,
-            dtype=np.float,
-        )
-        self.epsilon = np.log(self.system.volume / 3)
-        self.thermostats_number = self.external.thermostat_parameters.size
-
-        kinetic_energy = self.system.configuration.kinetic_energy
-        self.g_npt = self.get_g_npt(
-            kinetic_energy=kinetic_energy,
-        )
-        self.g_nvt = np.zeros(self.thermostats_number, dtype=np.float)
-        self.g_nvt[0] = self.get_g_nvt_0(
-            kinetic_energy=kinetic_energy,
-        )
-        for k in range(1, self.thermostats_number):
-            self.g_nvt[k] = self.get_g_nvt_k(k=k)
-        log_debug_info(f'self.npt_factor = {self.npt_factor}')
-        log_debug_info(f'self.nvt_factors = {self.nvt_factors}')
-        log_debug_info(f'self.xis = {self.xis}')
-        log_debug_info(f'self.epsilon = {self.epsilon}')
-        log_debug_info(f'self.thermostats_number = {self.thermostats_number}')
-        log_debug_info(f'system_kinetic_energy = {self.system.configuration.kinetic_energy}')
-        log_debug_info(f'self.g_npt = {self.g_npt}')
-        log_debug_info(f'self.g_nvt = {self.g_nvt}')
-        log_debug_info(
-            f'positions mean = {self.system.configuration.positions.mean()}'
-        )
-        log_debug_info(
-            f'velocities mean = {self.system.configuration.velocities.mean()}'
-        )
-        log_debug_info(
-            f'accelerations mean = {self.system.configuration.accelerations.mean()}'
-        )
-
+        # TODO need to init again?
+        self.init_integrator_parameters()
         self.get_next_velocities()
         self.nose_hoover_chain()
 
