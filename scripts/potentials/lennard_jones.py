@@ -13,7 +13,7 @@ class LennardJones(BasePotential):
     def get_energies_and_forces(self):
         # forces - это величины -dU/rdr.
         # Сила получается умножением на вектор r_ij
-        sigma_pow6, epsilon_x4 = self.sigma ** 6, self.epsilon * 4
+        sigma_pow6, epsilon_x4, r_cut = self.sigma ** 6, self.epsilon * 4, 1.0#self.r_cut
         log_debug_info(
             'sigma_pow6, epsilon_x4, r_cut, table_size = '
             f'{sigma_pow6}, {epsilon_x4}, {self.r_cut}, {self.table_size}'
@@ -23,8 +23,8 @@ class LennardJones(BasePotential):
             f'{self.distances.max()}'
         )
         energy_r_cut = epsilon_x4 * (
-                sigma_pow6 * sigma_pow6 / (self.r_cut ** 12)
-                - sigma_pow6 / (self.r_cut ** 6)
+                sigma_pow6 * sigma_pow6 / (r_cut ** 12)
+                - sigma_pow6 / (r_cut ** 6)
         )
         log_debug_info(f'energy_r_cut = {energy_r_cut}')
         energies = epsilon_x4 * (

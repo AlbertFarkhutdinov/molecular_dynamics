@@ -34,7 +34,10 @@ class ImmutableParameters:
     def get_potential(potential_type: str):
         potential = None
         if potential_type == 'lennard_jones':
-            potential = LennardJones(table_size=25000, r_cut=2.5)
+            potential = LennardJones(
+                table_size=25000,
+                r_cut=2.5,
+            )
         elif potential_type == 'dzugutov':
             potential = Dzugutov(table_size=15000, r_cut=1.94)
         return potential

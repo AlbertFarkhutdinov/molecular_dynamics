@@ -84,6 +84,24 @@ class MTTK(BaseIntegrator):
 
     @logger_wraps()
     def stage_2(self):
+        log_debug_info(f'self.npt_factor = {self.npt_factor}')
+        log_debug_info(f'self.nvt_factors = {self.nvt_factors}')
+        log_debug_info(f'self.xis = {self.xis}')
+        log_debug_info(f'self.epsilon = {self.epsilon}')
+        log_debug_info(f'self.thermostats_number = {self.thermostats_number}')
+        log_debug_info(f'system_kinetic_energy = {system_kinetic_energy}')
+        log_debug_info(f'self.g_npt = {self.g_npt}')
+        log_debug_info(f'self.g_nvt = {self.g_nvt}')
+        log_debug_info(
+            f'positions mean = {self.system.configuration.positions.mean()}'
+        )
+        log_debug_info(
+            f'velocities mean = {self.system.configuration.velocities.mean()}'
+        )
+        log_debug_info(
+            f'accelerations mean = {self.system.configuration.accelerations.mean()}'
+        )
+
         self.get_next_velocities()
         self.nose_hoover_chain()
 
