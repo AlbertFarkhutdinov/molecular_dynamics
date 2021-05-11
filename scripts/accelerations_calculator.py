@@ -1,3 +1,5 @@
+import numpy as np
+
 from scripts.immutable_parameters import ImmutableParameters
 from scripts.system import System
 from scripts.helpers import get_empty_float_scalars, get_empty_int_scalars
@@ -56,15 +58,14 @@ class AccelerationsCalculator:
         log_debug_info(f'r_cut = {self.immutables.r_cut}')
         log_debug_info(f'cell_dimensions = {self.system.cell_dimensions}')
         log_debug_info(
-            f'all_neighbours.max() = {self.neighbours_lists["all_neighbours"].max()}'
+            f'all_neighbours.max() = {np.max(self.neighbours_lists["all_neighbours"])}'
         )
         log_debug_info(
-            f'first_neighbours.max() = {self.neighbours_lists["first_neighbours"].max()}'
+            f'first_neighbours.max() = {np.max(self.neighbours_lists["first_neighbours"])}'
         )
         log_debug_info(
-            f'last_neighbours.max() = {self.neighbours_lists["last_neighbours"].max()}'
+            f'last_neighbours.max() = {np.max(self.neighbours_lists["last_neighbours"])}'
         )
-        log_debug_info(f'potential_energies.mean() = {potential_energies.mean()}')
         log_debug_info(
             f'positions.mean() = {self.system.configuration.positions.mean()}'
         )
@@ -72,6 +73,8 @@ class AccelerationsCalculator:
             f'accelerations.mean() = {self.system.configuration.accelerations.mean()}'
         )
         log_debug_info(f'Virial = {self.system.virial}')
+        log_debug_info(f'Mean potential: {potential_energies.mean()};')
+        log_debug_info(f'Potential energy: {potential_energies.sum()};')
         self.system.virial = lf_cycle(
             particles_number=self.immutables.particles_number,
             r_cut=self.immutables.r_cut,
@@ -85,6 +88,8 @@ class AccelerationsCalculator:
             accelerations=self.system.configuration.accelerations,
         )
         log_debug_info(f'Virial = {self.system.virial}')
+        log_debug_info(f'Mean potential: {potential_energies.mean()};')
+        log_debug_info(f'Potential energy: {potential_energies.sum()};')
         acc_mag = (
                           self.system.configuration.accelerations ** 2
                   ).sum(axis=1) ** 0.5
@@ -100,8 +105,6 @@ class AccelerationsCalculator:
                 * self.immutables.time_step / 2.0
         )
         self.load_move_test()
-        log_debug_info(f'Mean potential: {potential_energies.mean()};')
-        log_debug_info(f'Potential energy: {potential_energy};')
         self.system.potential_energy = potential_energy
 
     @logger_wraps()

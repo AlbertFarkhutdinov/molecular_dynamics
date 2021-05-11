@@ -54,6 +54,10 @@ class Initializer:
             0,
             ['L_x', 'L_y', 'L_z'],
         ].to_numpy()
+        self.system.initial_cell_dimensions = _configuration.loc[
+            0,
+            ['L_x', 'L_y', 'L_z'],
+        ].to_numpy()
         self.system.configuration.particles_number = _configuration.loc[
             0,
             'particles_number',
@@ -111,6 +115,12 @@ class Initializer:
             particles_numbers,
             dtype=np.float,
         ) * lattice_constant
+
+        self.system.initial_cell_dimensions = np.array(
+            particles_numbers,
+            dtype=np.float,
+        ) * lattice_constant
+
         self.initialize_configuration_with_particles_number(
             self.system.configuration.particles_number
         )
@@ -128,6 +138,10 @@ class Initializer:
     ):
         self.system.configuration.particles_number = particles_number
         self.system.cell_dimensions = np.array(cell_dimensions, dtype=np.float)
+        self.system.initial_cell_dimensions = np.array(
+            cell_dimensions,
+            dtype=np.float,
+        )
         self.initialize_configuration_with_particles_number(
             self.system.configuration.particles_number
         )

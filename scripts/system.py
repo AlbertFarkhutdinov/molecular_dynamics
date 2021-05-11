@@ -66,6 +66,7 @@ class System:
         self.virial = system_kwargs.get('virial', 0.0)
         self.pressure = system_kwargs.get('pressure', 0.0)
         self.potential_energy = system_kwargs.get('potential_energy', 0.0)
+        self.initial_cell_dimensions = None
 
     @property
     def volume(self) -> float:
@@ -106,18 +107,13 @@ class System:
             if positions is None
             else positions
         )
-        log_debug_info(f'positions.min() = {_positions.min()}')
         log_debug_info(f'positions.mean() = {_positions.mean()}')
-        log_debug_info(f'positions.max() = {_positions.max()}')
-        # TODO fix PBC
         self.configuration.positions = get_boundary_conditions(
-            cell_dimensions=self.cell_dimensions,
+            cell_dimensions=self.initial_cell_dimensions,
             particles_number=self.configuration.particles_number,
             positions=_positions,
         )
-        log_debug_info(f'positions.min() = {_positions.min()}')
         log_debug_info(f'positions.mean() = {_positions.mean()}')
-        log_debug_info(f'positions.max() = {_positions.max()}')
 
     def save_xyz_file(self, filename: str, step: int):
         _path = os.path.join(
