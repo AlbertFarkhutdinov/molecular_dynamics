@@ -34,7 +34,7 @@ def main(
 
 if __name__ == '__main__':
     np.set_printoptions(threshold=5000)
-    # TODO NPT
+    # TODO NPT, comparing with 2021-01-22
     main(
         config_filenames=[
             'book_npt.json',
