@@ -94,7 +94,7 @@ class MTTK(BaseIntegrator):
     @logger_wraps()
     def stage_2(self):
         # TODO need to init again?
-        self.init_integrator_parameters()
+        # self.init_integrator_parameters()
         self.get_next_velocities()
         self.nose_hoover_chain()
 

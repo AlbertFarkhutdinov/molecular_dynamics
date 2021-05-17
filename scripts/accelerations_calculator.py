@@ -9,7 +9,6 @@ from scripts.numba_procedures import lf_cycle, update_list_cycle
 
 
 class AccelerationsCalculator:
-    # TODO check AC
 
     def __init__(
             self,

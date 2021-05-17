@@ -264,7 +264,7 @@ class MolecularDynamics:
             self.md_time_step(
                 step=step,
                 system_parameters=system_parameters,
-                is_pbc_switched_on=True,
+                is_pbc_switched_on=False,
             )
             print_info(
                 step=step,
