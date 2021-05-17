@@ -1,5 +1,3 @@
-from atooms.trajectory import Trajectory
-import atooms.postprocessing as pp
 import numpy as np
 
 from scripts.helpers import get_empty_float_scalars
@@ -23,15 +21,6 @@ class RadialDistributionFunction:
         self.radiuses = get_empty_float_scalars(
             20 * sample.system.configuration.particles_number
         )
-
-    def calculate_by_atooms(self, trajectory_file_path):
-        rdf_instance = pp.RadialDistributionFunction(
-            Trajectory(trajectory_file_path),
-            norigins=self.ensembles_number,
-            dr=self.layer_thickness,
-        )
-        rdf_instance.do()
-        return rdf_instance.grid, rdf_instance.value
 
     def accumulate(self):
         static_distances = self.sample.interparticle_distances.flatten()

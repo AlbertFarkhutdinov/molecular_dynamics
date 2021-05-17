@@ -37,7 +37,7 @@ if __name__ == '__main__':
     # TODO NPT, comparing with 2021-01-22
     main(
         config_filenames=[
-            'book_npt.json',
+            'test_npt.json',
         ],
         is_with_isotherms=True,
     )

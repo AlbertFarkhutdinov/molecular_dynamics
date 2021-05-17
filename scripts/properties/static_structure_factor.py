@@ -1,5 +1,3 @@
-from atooms.trajectory import Trajectory
-import atooms.postprocessing as pp
 import numpy as np
 
 from scripts.helpers import get_empty_float_scalars
@@ -34,19 +32,6 @@ class StaticStructureFactor:
         ]) * 2 * np.pi / sample.system.cell_dimensions
         self.all_wave_numbers = (self.all_wave_vectors ** 2).sum(axis=1) ** 0.5
         self.ssf = get_empty_float_scalars(self.wave_numbers_range.size)
-
-    @staticmethod
-    def calculate_by_atooms(trajectory_file_path):
-        ssf_instance = pp.StructureFactor(
-            Trajectory(trajectory_file_path),
-            # kmin=0.0,
-            # kmax=20.0,
-            # ksamples=1000,
-            # nk=20,
-            # dk=0.1,
-        )
-        ssf_instance.do()
-        return ssf_instance.grid, ssf_instance.value
 
     def accumulate(self):
         srv = self.sample.system.configuration.interparticle_vectors
