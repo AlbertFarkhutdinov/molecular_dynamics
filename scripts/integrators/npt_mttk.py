@@ -19,9 +19,15 @@ class MTTK(BaseIntegrator):
         self.init_integrator_parameters()
         log_debug_info(f'self.epsilon = {self.epsilon}')
         log_debug_info(f'self.thermostats_number = {self.thermostats_number}')
-        log_debug_info(f'positions mean = {self.system.configuration.positions.mean()}')
-        log_debug_info(f'velocities mean = {self.system.configuration.velocities.mean()}')
-        log_debug_info(f'accelerations mean = {self.system.configuration.accelerations.mean()}')
+        log_debug_info(
+            f'positions mean = {self.system.configuration.positions.mean()}'
+        )
+        log_debug_info(
+            f'velocities mean = {self.system.configuration.velocities.mean()}'
+        )
+        log_debug_info(
+            f'accelerations mean = {self.system.configuration.accelerations.mean()}'
+        )
 
     def init_integrator_parameters(self):
         self.npt_factor = 0.0

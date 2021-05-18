@@ -276,7 +276,7 @@ class MolecularDynamics:
 
             if self.is_with_isotherms:
                 isotherm_steps = (
-                    # 1,
+                    1,
                 )
                 if (
                         not (step % self.sim_parameters.isotherm_saving_step)
