@@ -36,7 +36,7 @@ if __name__ == '__main__':
     np.set_printoptions(threshold=5000)
     main(
         config_filenames=[
-            'cooling_normal_0.3.json',
+            'cooling_T_0.3_HV_8e-4.json',
         ],
         is_with_isotherms=True,
     )
