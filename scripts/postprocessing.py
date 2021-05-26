@@ -181,10 +181,13 @@ class PostProcessor:
             y_scale="linear",
             title=None,
             filename_postfix='',
+            shown=None,
             **limits,
     ):
         fig, ax = plt.subplots(figsize=figsize)
         for i, setup in enumerate(self.setups):
+            if shown is not None and i not in shown:
+                continue
             ax.plot(
                 x,
                 y(i),
@@ -454,12 +457,20 @@ class PostProcessor:
 
 class RegressionRDF:
 
-    def __init__(self, post_processor, setups, test_temperatures):
+    def __init__(
+            self,
+            post_processor,
+            setups,
+            test_temperatures=None,
+            test_heating_velocities=None,
+    ):
         self.post_processor = post_processor
         self.rdf_table = self.get_rdf_table()
         self.setups = setups
         self.temperatures = self.get_temperatures_from_indices()
+        self.heating_velocities = self.get_hv_from_indices()
         self.test_temperatures = test_temperatures
+        self.test_heating_velocities = test_heating_velocities
 
     def get_rdf_table(self):
         rdf_table = deepcopy(self.post_processor.rdf.data)
@@ -467,6 +478,15 @@ class RegressionRDF:
         rdf_table = rdf_table.drop(columns=['radius'])
         rdf_table = rdf_table.T[::-1]
         return rdf_table
+
+    def get_hv_from_indices(self):
+        return np.array(
+            [
+                self.setups[value]['heating_velocity']
+                for value
+                in self.rdf_table.index.str[6:].values.astype(np.int32)
+            ]
+        )
 
     def get_temperatures_from_indices(self):
         return np.array(
@@ -498,8 +518,9 @@ class RegressionRDF:
             fitted_data, error,
             k, b, r,
             is_saved,
+            figsize,
     ):
-        fig, ax = plt.subplots(figsize=(10, 5))
+        fig, ax = plt.subplots(figsize=figsize)
         ax.errorbar(
             self.temperatures,
             y_train,

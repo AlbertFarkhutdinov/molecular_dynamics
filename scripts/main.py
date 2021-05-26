@@ -33,6 +33,8 @@ def main(
 
 
 if __name__ == '__main__':
+    import os
+    print(os.getcwd())
     np.set_printoptions(threshold=5000)
     main(
         config_filenames=[
