@@ -364,8 +364,8 @@ class PostProcessor:
         plt.xlabel(r'$t$, $\tau$')
         plt.ylabel(y_label)
         plt.xlim(
-            left=times.min(),
-            right=times.max(),
+            left=limits.get('left', times.min()),
+            right=limits.get('right', times.max()),
         )
         plt.ylim(
             bottom=limits.get('bottom'),
