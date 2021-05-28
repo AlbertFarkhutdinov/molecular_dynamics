@@ -526,7 +526,7 @@ class RegressionRDF:
             y_train,
             yerr=error,
             fmt='o',
-            label=fr'$g(r = {r})$',
+            label=fr'$g(r = {r}\sigma)$',
         )
         ax.plot(
             self.temperatures,
@@ -536,11 +536,11 @@ class RegressionRDF:
         ax.legend()
         ax.set_xlabel(r'Temperature, $\epsilon / k_B$')
         ax.set_ylabel('$g(r)$')
-        plt.show()
         if is_saved:
             self.post_processor.save_plot(
                 f'rdf_point_{self.post_processor.plot_filename_postfix}.png'
             )
+        plt.show()
         plt.close()
 
     def get_fitted_column(self, y_train):
@@ -555,6 +555,7 @@ class RegressionRDF:
             self,
             is_printed: bool,
             is_plotted: bool,
+            figure_size,
     ):
         predicted_points = {key: [] for key in self.test_temperatures}
         for column in self.rdf_table.columns:
@@ -580,6 +581,7 @@ class RegressionRDF:
                         error=error,
                         k=k, b=b, r=column,
                         is_saved=False,
+                        figsize=figure_size,
                     )
             else:
                 for key, _ in predicted_points.items():

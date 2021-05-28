@@ -4,12 +4,6 @@ from scripts.main import main
 from scripts.log_config import logger
 
 filenames = [
-    'cooling_T_0.3_HV_1e-2.json',
-    'cooling_T_0.3_HV_3e-2.json',
-    'cooling_T_0.3_HV_4e-2.json',
-    'cooling_T_0.3_HV_5e-2.json',
-    'cooling_T_0.3_HV_6e-2.json',
-    'cooling_T_0.3_HV_7e-2.json',
     'cooling_T_0.3_HV_8e-2.json',
     'cooling_T_0.3_HV_9e-2.json',
 ]
