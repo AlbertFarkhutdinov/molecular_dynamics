@@ -4,8 +4,12 @@ from scripts.main import main
 from scripts.log_config import logger
 
 filenames = [
-    'cooling_T_0.3_HV_8e-2.json',
-    'cooling_T_0.3_HV_9e-2.json',
+    'cooling_normal_0.05.json',
+    'cooling_slow_0.05.json',
+    'cooling_normal_0.2.json',
+    'cooling_slow_0.2.json',
+    'cooling_normal_0.4.json',
+    'cooling_slow_0.4.json',
 ]
 
 for i, filename in enumerate(filenames):
