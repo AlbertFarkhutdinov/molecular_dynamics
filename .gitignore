@@ -1,5 +1,5 @@
 *.txt
-
+!requirements.txt
 
 
 # Byte-compiled / optimized / DLL files
@@ -132,4 +132,8 @@ dmypy.json
 # Pyre type checker
 .pyre/
 
+# Pycharm project settings
 .idea
+
+# Private files
+private_readme.md

@@ -32,7 +32,7 @@ def logger_wraps(*, is_entry=True, is_exit=True, level="DEBUG"):
                 logger_ = logger.opt(depth=1)
                 if is_exit:
                     message = f"Exiting '{func_name}'\n"
-                    if result:
+                    if result is not None:
                         message += f'\tresult={repr(result)}'
                     logger_.log(level, message.rstrip())
 

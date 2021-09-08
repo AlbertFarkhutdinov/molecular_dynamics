@@ -1,7 +1,31 @@
 from datetime import datetime
-from typing import Dict, Iterable
+from json import load, dumps
+from os.path import join
+from typing import Any, Dict, Iterable, Optional, Set
 
 import numpy as np
+
+from scripts.constants import PATH_TO_CONFIG, PATH_TO_DATA
+
+
+def get_config_parameters(file_name):
+    _config_filename = join(
+        PATH_TO_CONFIG,
+        file_name
+    )
+    with open(_config_filename, encoding='utf8') as file:
+        config_parameters = load(file)
+    return config_parameters
+
+
+def save_config_parameters(config_parameters, config_number):
+    _config_filename = join(
+        PATH_TO_DATA,
+        get_date(),
+        f'{get_date()}_config_{config_number}.inf',
+    )
+    with open(_config_filename, encoding='utf8', mode='w') as file:
+        file.write(dumps(config_parameters, indent=2, ensure_ascii=False))
 
 
 def get_empty_vectors(vectors_number: int) -> np.ndarray:
@@ -52,3 +76,87 @@ def print_info(
         f'\tP = {parameters["pressure"][step - 1]:.5f};\n',
         sep='\n',
     )
+
+
+def math_round(
+        number: float,
+        number_of_digits_after_separator: int = 0,
+) -> float:
+    """
+    Return rounded float number.
+
+    Parameters
+    ----------
+    number : float
+        Number to be rounded.
+    number_of_digits_after_separator
+        Number of digits after
+        decimal separator in `number`.
+
+    Returns
+    -------
+    float
+        Rounded float number.
+
+    """
+    _multiplier = int('1' + '0' * number_of_digits_after_separator)
+    _number_without_separator = number * _multiplier
+    _integer_part = int(_number_without_separator)
+    _first_discarded_digit = int(
+        (_number_without_separator - _integer_part) * 10
+    )
+    if _first_discarded_digit >= 5:
+        _integer_part += 1
+    result = _integer_part / _multiplier
+    return result
+
+
+def get_representation(
+        instance: Any,
+        excluded: Optional[Set[str]] = None,
+        is_base_included: bool = False,
+) -> str:
+    """
+    Return the 'official' string representation of `instance`.
+
+    Parameters
+    ----------
+    instance : Any
+        The instance, which representation is returned.
+    excluded : set, optional
+        Names of arguments that are excluded
+        from the representation.
+    is_base_included : bool, optional, default: False
+        If it is True, arguments of base class are included.
+
+    Returns
+    -------
+    str
+        The 'official' string representation of `instance`.
+
+    """
+    _parent_class_name = instance.__class__.__bases__[0].__name__
+    _class_name = instance.__class__.__name__
+    representation = [
+        f'{_class_name}(',
+    ]
+    for _key, _value in instance.__dict__.items():
+        _key_repr, _value_repr = _key, _value
+        if _key.startswith(f'_{_parent_class_name}__'):
+            if is_base_included:
+                _key_repr = _key[3 + len(_parent_class_name):]
+            else:
+                continue
+        if _key.startswith(f'_{_class_name}__'):
+            _key_repr = _key[3 + len(_class_name):]
+        if excluded and _key_repr in excluded:
+            continue
+        if isinstance(_value, (tuple, list, np.ndarray)):
+            _value_repr = tuple(_value)
+        representation.append(f'{_key_repr}={_value_repr!r}')
+        representation.append(', ')
+    if len(representation) > 1:
+        representation.pop()
+    representation.append(')')
+
+    return ''.join(representation)

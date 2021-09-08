@@ -1,31 +1,29 @@
 {
-  "static_parameters": {
+  "initials": {
     "init_type": 1,
     "lattice_constant": 1.75,
-    "particles_number": [7, 7, 7],
-    "crystal_type": "гцк"
+    "particles_numbers": [7, 7, 7],
+    "crystal_type": "FCC",
+    "initial_temperature": 2.8
   },
-  "external_parameters": {
+  "immutables": {
+    "time_step": 0.005,
+    "potential_type": "lennard_jones",
+    "skin_for_neighbors": 0.3
+  },
+  "externals": {
     "environment_type": "velocity_scaling",
     "heating_velocity": 0.02,
     "temperature": 2.8
   },
-  "modeling_parameters": {
+  "simulation_parameters": {
     "iterations_numbers": 15000,
-    "time_step": 0.005,
-    "initial_temperature": 2.8
-  },
-  "potential_parameters": {
-    "potential_type": "lennard_jones",
-    "skin": 0.3
-  },
-  "saver_parameters": {
     "configuration_storing_step": 20,
-    "configuration_saving_step": 1000
-  },
-  "isotherm_parameters": {
+    "configuration_saving_step": 1000,
     "isotherm_saving_step": 5000,
     "equilibration_steps": 500,
-    "ensembles_number": 1000
+    "ensembles_number": 2000,
+    "ssf_steps": 0,
+    "ssf_max_wave_number": 10
   }
 }

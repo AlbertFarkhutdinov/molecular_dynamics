@@ -1,0 +1,32 @@
+{
+  "initials": {
+    "init_type": -1,
+    "lattice_constant": 1.75,
+    "crystal_type": "FCC",
+    "file_name": "2021-05-05_nvt_heating/system_configuration_2021_05_05_13_07_31.csv",
+    "temperature": 2.8
+  },
+  "immutables": {
+    "time_step": 0.005,
+    "potential_type": "lennard_jones",
+    "skin_for_neighbors": 0.3
+  },
+  "externals": {
+    "environment_type": "mtk",
+    "heating_velocity": 0.0,
+    "temperature": 2.8,
+    "pressure": 22,
+    "thermostat_parameters": [100.0],
+    "barostat_parameter": 200.0
+  },
+  "simulation_parameters": {
+    "iterations_numbers": 5000,
+    "configuration_storing_step": 5,
+    "configuration_saving_step": 125,
+    "isotherm_saving_step": 500,
+    "equilibration_steps": 500,
+    "ensembles_number": 2000,
+    "ssf_steps": 5,
+    "ssf_max_wave_number": 10
+  }
+}
