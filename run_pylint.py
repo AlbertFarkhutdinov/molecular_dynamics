@@ -36,11 +36,11 @@ pylint_opts = [
     'scripts\\initializer.py',
     'scripts\\isotherm.py',
     'scripts\\log_config.py',
-    'scripts\\main.py',
     # 'scripts\\numba_procedures.py',
     'scripts\\plotter.py',
     'scripts\\saver.py',
     'scripts\\system.py',
+    'main.py',
 ]
 pylint.lint.Run(pylint_opts)
 pylint_opts = [

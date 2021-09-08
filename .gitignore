@@ -132,4 +132,8 @@ dmypy.json
 # Pyre type checker
 .pyre/
 
+# Pycharm project settings
 .idea
+
+# Private files
+private_readme.md
