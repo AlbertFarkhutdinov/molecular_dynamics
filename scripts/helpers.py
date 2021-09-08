@@ -5,7 +5,7 @@ from typing import Any, Dict, Iterable, Optional, Set
 
 import numpy as np
 
-from constants import PATH_TO_CONFIG, PATH_TO_DATA
+from scripts.constants import PATH_TO_CONFIG, PATH_TO_DATA
 
 
 def get_config_parameters(file_name):

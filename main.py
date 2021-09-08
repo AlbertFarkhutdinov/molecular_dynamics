@@ -13,19 +13,19 @@ def main(
         is_with_isotherms: bool = True,
 ):
     _config_filename = config_filenames[0]
-    md = MolecularDynamics(
+    md_instance = MolecularDynamics(
         config_filename=_config_filename,
         is_with_isotherms=is_with_isotherms
     )
-    md.run_md()
+    md_instance.run_md()
     save_config_parameters(
         config_parameters=get_config_parameters(_config_filename),
         config_number=0,
     )
     for i, file_name in enumerate(config_filenames[1:]):
         config_parameters = get_config_parameters(file_name)
-        md.update_simulation_parameters(config_parameters)
-        md.run_md()
+        md_instance.update_simulation_parameters(config_parameters)
+        md_instance.run_md()
         save_config_parameters(
             config_parameters=config_parameters,
             config_number=i + 1,

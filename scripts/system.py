@@ -101,7 +101,7 @@ class System:
         return pressure
 
     def apply_boundary_conditions(self, positions=None) -> None:
-        log_debug_info(f'apply_boundary_conditions')
+        log_debug_info('apply_boundary_conditions')
         _positions = (
             self.configuration.positions
             if positions is None

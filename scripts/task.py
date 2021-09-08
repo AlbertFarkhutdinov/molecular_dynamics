@@ -1,6 +1,6 @@
 from datetime import date
 import os
-from scripts.main import main
+from main import main
 from scripts.log_config import logger
 
 filenames = [

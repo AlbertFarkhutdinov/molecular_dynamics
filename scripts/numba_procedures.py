@@ -1,8 +1,6 @@
 import numba as nb
 import numpy as np
 
-from scripts.log_config import log_debug_info
-
 
 @nb.njit
 def math_round(value):
@@ -196,9 +194,6 @@ def lf_cycle(
                 # log_debug_info(f'force_ij = {force_ij}')
                 potential_energies[i] += potential_ij / 2.0
                 potential_energies[j] += potential_ij / 2.0
-                # log_debug_info(
-                #     f'potential_energies = {potential_energies[i]}, {potential_energies[j]}',
-                # )
                 acceleration_ij = force_ij * radius_vector
                 virial += force_ij * distance * distance / 2
                 accelerations[i] += acceleration_ij

@@ -34,26 +34,26 @@ class MolecularDynamics:
         config_parameters = get_config_parameters(config_filename)
 
         self.system = System()
-        log_debug_info(f'System is created.')
-        print(f'System is created.')
+        log_debug_info('System is created.')
+        print('System is created.')
         self.initials = Initializer(
             system=self.system,
             **config_parameters["initials"],
         ).get_initials()
-        log_debug_info(f'Initial parameters are received.')
-        print(f'Initial parameters are received.')
+        log_debug_info('Initial parameters are received.')
+        print('Initial parameters are received.')
         self.immutables = ImmutableParameters(
             particles_number=self.initials.configuration.particles_number,
             **config_parameters["immutables"],
         )
-        log_debug_info(f'Immutable parameters are received.')
-        print(f'Immutable parameters are received.')
+        log_debug_info('Immutable parameters are received.')
+        print('Immutable parameters are received.')
         self.accelerations_calculator = AccelerationsCalculator(
             system=self.initials,
             immutables=self.immutables,
         )
-        log_debug_info(f'Accelerations Calculator is initialized.')
-        print(f'Accelerations Calculator is initialized.')
+        log_debug_info('Accelerations Calculator is initialized.')
+        print('Accelerations Calculator is initialized.')
         self.is_with_isotherms = is_with_isotherms
         self.is_msd_calculated = is_msd_calculated
         self.interparticle_vectors = np.zeros(
@@ -74,8 +74,8 @@ class MolecularDynamics:
         self.externals, self.integrator = None, None
         self.sim_parameters, self.saver = None, None
         self.update_simulation_parameters(config_parameters)
-        log_debug_info(f'Simulation parameters are updated.')
-        print(f'Simulation parameters are updated.')
+        log_debug_info('Simulation parameters are updated.')
+        print('Simulation parameters are updated.')
 
     def update_simulation_parameters(self, config_parameters):
         self.externals = ExternalParameters(**config_parameters["externals"])
@@ -190,9 +190,9 @@ class MolecularDynamics:
 
     def fix_external_conditions(self):
         print(
-            f'*******Isotherm for '
+            '*******Isotherm for '
             f'T = {self.system.configuration.get_temperature():.5f}'
-            f'*******'
+            '*******'
         )
         self.fix_current_temperature()
         self.externals.pressure = self.system.get_pressure(
@@ -289,7 +289,7 @@ class MolecularDynamics:
             system_parameters=system_parameters,
         )
         print(
-            f'Simulation is completed. '
+            'Simulation is completed. '
             f'Time of calculation: {datetime.now() - start}'
         )
 
