@@ -4,7 +4,7 @@
     "lattice_constant": 1.75,
     "particles_numbers": [7, 7, 7],
     "crystal_type": "FCC",
-    "initial_temperature": 1.0
+    "initial_temperature": 1.2
   },
   "immutables": {
     "time_step": 0.005,
@@ -14,7 +14,7 @@
   "externals": {
     "environment_type": "velocity_scaling",
     "heating_velocity": 0.02,
-    "temperature": 1e-5
+    "temperature": 1.0
   },
   "simulation_parameters": {
     "iterations_numbers": 40000,
