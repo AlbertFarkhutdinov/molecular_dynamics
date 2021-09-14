@@ -4,7 +4,7 @@
     "lattice_constant": 1.75,
     "particles_numbers": [7, 7, 7],
     "crystal_type": "FCC",
-    "initial_temperature": 1.0
+    "initial_temperature": 1.2
   },
   "immutables": {
     "time_step": 0.005,
@@ -14,15 +14,15 @@
   "externals": {
     "environment_type": "velocity_scaling",
     "heating_velocity": 0.02,
-    "temperature": 1e-5
+    "temperature": 1.0
   },
   "simulation_parameters": {
-    "iterations_numbers": 40000,
+    "iterations_numbers": 30000,
     "configuration_storing_step": 20,
     "configuration_saving_step": 1000,
-    "isotherm_saving_step": 2500,
-    "equilibration_steps": 500,
-    "ensembles_number": 1000,
+    "isotherm_saving_step": 30000,
+    "equilibration_steps": 10000,
+    "ensembles_number": 5000,
     "ssf_steps": 0,
     "ssf_max_wave_number": 10
   }
