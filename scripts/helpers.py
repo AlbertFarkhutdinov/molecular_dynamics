@@ -68,12 +68,14 @@ def print_info(
         iterations_numbers: int,
         current_time: float,
         parameters: Dict[str, Iterable],
+        step_index: int = None,
 ):
+    _step_index = step_index or step
     print(
         f'Step: {step}/{iterations_numbers};',
         f'\tTime = {current_time:.3f};',
-        f'\tT = {parameters["temperature"][step - 1]:.5f};',
-        f'\tP = {parameters["pressure"][step - 1]:.5f};\n',
+        f'\tT = {parameters["temperature"][step_index - 1]:.5f};',
+        f'\tP = {parameters["pressure"][step_index - 1]:.5f};\n',
         sep='\n',
     )
 

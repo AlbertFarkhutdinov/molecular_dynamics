@@ -86,6 +86,7 @@ class MolecularDynamics:
         self.saver = Saver(
             system=self.system,
             simulation_parameters=self.sim_parameters,
+            parameters_saving_step=1000,
         )
 
     def calculate_interparticle_vectors(self):
@@ -238,8 +239,7 @@ class MolecularDynamics:
             file_name=f'system_configuration_{time}.csv',
         )
 
-    @staticmethod
-    def get_empty_parameters():
+    def get_empty_parameters(self):
         return get_parameters_dict(
             names=(
                 'time',
@@ -253,7 +253,7 @@ class MolecularDynamics:
                 'diffusion',
                 'volume',
             ),
-            value_size=1000,
+            value_size=self.saver.parameters_saving_step,
         )
 
     @logger_wraps()
@@ -273,12 +273,13 @@ class MolecularDynamics:
             )
             print_info(
                 step=step,
+                step_index=step % self.saver.parameters_saving_step,
                 iterations_numbers=self.sim_parameters.iterations_numbers,
                 current_time=self.system.time,
                 parameters=system_parameters,
             )
             log_debug_info(f'End of step {step}.\n')
-            if step % 1000:
+            if step % self.saver.parameters_saving_step == 0:
                 self.saver.save_system_parameters(
                     system_parameters=system_parameters,
                     file_name=f'system_parameters_{self.get_str_time()}.csv',
