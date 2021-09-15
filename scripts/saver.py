@@ -18,10 +18,15 @@ class Saver:
             step: int = 1,
             system: System = None,
             lammps_configurations = None,
+            parameters_saving_step: int = None,
+
     ):
         self.step = step
         self.system = system
         self.iterations_numbers = simulation_parameters.iterations_numbers
+        self.parameters_saving_step = (
+                parameters_saving_step or self.iterations_numbers
+        )
         self.lammps_configurations = lammps_configurations or []
         self.configuration_storing_step = (
             simulation_parameters.configuration_storing_step
@@ -80,7 +85,9 @@ class Saver:
             parameters: dict,
     ):
         for key, value in parameters.items():
-            system_parameters[key][self.step - 1] = value
+            system_parameters[key][
+                self.step % self.parameters_saving_step - 1
+            ] = value
 
     def get_lammps_trajectory(self):
         lines = [
