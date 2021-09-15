@@ -4,8 +4,8 @@ from main import main
 from scripts.log_config import logger
 
 configs = [
-    ['cooling_normal_1.2_long.json', 'nve.json'],
-    ['cooling_normal_1.2_short.json', 'nve.json'],
+    ['cooling_normal_1.3_normal.json', ],
+    ['cooling_normal_1.3_long.json', ],
 ]
 
 for i, config in enumerate(configs):
@@ -17,7 +17,7 @@ for i, config in enumerate(configs):
     print(PATH_TO_DATA)
     main(
         config_filenames=config,
-        is_with_isotherms=False,
+        is_with_isotherms=True,
     )
     logger.remove()
     suffix = '+'.join([item.removesuffix('.json') for item in config])
