@@ -12,7 +12,7 @@ for i, config in enumerate(configs):
     PATH_TO_DATA = os.path.join(
         os.path.dirname(os.getcwd()),
         'data',
-        str(get_date),
+        get_date(),
     )
     print(PATH_TO_DATA)
     main(
@@ -27,6 +27,6 @@ for i, config in enumerate(configs):
         PATH_TO_DATA = os.path.join(
             os.path.dirname(os.getcwd()),
             'data',
-            str(get_date),
+            get_date(),
         )
         os.rename(PATH_TO_DATA, f'{PATH_TO_DATA}_{suffix}')
