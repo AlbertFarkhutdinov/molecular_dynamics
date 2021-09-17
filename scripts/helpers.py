@@ -48,12 +48,16 @@ def sign(value: float) -> int:
     return 0
 
 
+def get_current_time():
+    return datetime.now()
+
+
 def get_formatted_time():
-    return datetime.now().strftime("%Y-%m-%d_%H_%M")
+    return get_current_time().strftime("%Y-%m-%d_%H_%M")
 
 
 def get_date():
-    return datetime.today().strftime("%Y-%m-%d")
+    return get_current_time().strftime("%Y-%m-%d")
 
 
 def get_parameters_dict(names: Iterable, value_size: int):

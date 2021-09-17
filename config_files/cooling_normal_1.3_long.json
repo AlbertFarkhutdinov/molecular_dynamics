@@ -21,8 +21,8 @@
     "configuration_storing_step": 10000,
     "configuration_saving_step": 5000000,
     "isotherm_saving_step": 1000000,
-    "equilibration_steps": 15000,
-    "ensembles_number": 10000,
+    "equilibration_steps": 10000,
+    "ensembles_number": 5000,
     "ssf_steps": 0,
     "ssf_max_wave_number": 10
   }

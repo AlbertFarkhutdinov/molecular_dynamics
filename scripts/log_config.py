@@ -1,4 +1,4 @@
-from datetime import date
+from helpers import get_date
 import functools
 from os.path import join
 
@@ -53,8 +53,8 @@ if IS_LOGGED:
     logger.add(
         join(
             PATH_TO_DATA,
-            str(date.today()),
-            f'log_{date.today()}.log',
+            get_date(),
+            f'log_{get_date()}.log',
         ),
         format="{time:YYYY-MM-dd HH:mm:ss,SSS} | {level} | {message}",
         level="DEBUG",
