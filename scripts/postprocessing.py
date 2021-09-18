@@ -418,22 +418,12 @@ class PostProcessor:
         # TODO entropy is negative after cooling to T = 0
         self.get_entropy_diff()
         self.system_parameters['entropy'] = 0.0
-        for i in self.system_parameters.index:
-            if i == 0:
-                continue
-            self.system_parameters.loc[
-                i, 'entropy'
-            ] = self.system_parameters.loc[
-                i - 1,
-                'entropy'
-            ]
-            self.system_parameters.loc[
-                i, 'entropy'
-            ] += self.system_parameters.loc[
-                i,
-                'ds'
-            ]
+        _entropy = self.system_parameters['entropy'].values
+        _ds = self.system_parameters['ds'].values
+        for i in range(1, len(_entropy)):
+            _entropy[i] = _entropy[i - 1] + _ds[i]
 
+        self.system_parameters['entropy'] = _entropy
         return self.system_parameters
 
     def get_free_energy(self):
