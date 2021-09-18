@@ -12,6 +12,13 @@ class Isotherm:
             sample,
             layer_thickness: float = 0.01,
     ):
+        """
+        Ensembles number for static structure properties (RDF)
+        is 2 * `ensembles_number` - 1.
+        Ensembles number for dynamic properties (MSD, etc.)
+        is `ensembles_number`.
+
+        """
         self.start = time()
         self.sample = sample
         self.layer_thickness = layer_thickness
@@ -24,7 +31,7 @@ class Isotherm:
         self.rdf = RadialDistributionFunction(
             sample=self.sample,
             layer_thickness=layer_thickness,
-            ensembles_number=self.ensembles_number
+            ensembles_number=self.steps_number
         )
         self.transport_properties = TransportProperties(
             sample=self.sample,
@@ -66,9 +73,9 @@ class Isotherm:
             if step <= self.ensembles_number:
                 self.transport_properties.init_ensembles()
                 self.sample.calculate_interparticle_vectors()
-                self.rdf.accumulate()
                 # if step <= self.sample.sim_parameters.ssf_steps:
                 #     self.ssf.accumulate()
+            self.rdf.accumulate()
 
             self.transport_properties.accumulate()
 
