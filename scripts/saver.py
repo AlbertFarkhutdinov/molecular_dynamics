@@ -33,12 +33,13 @@ class Saver:
         self.configuration_saving_step = (
             simulation_parameters.configuration_saving_step
         )
-        self.date_folder = join(
-            PATH_TO_DATA,
-            get_date(),
-        )
-        if not exists(self.date_folder):
-            mkdir(self.date_folder)
+
+    @property
+    def date_folder(self):
+        _date_folder = join(PATH_TO_DATA, get_date())
+        if not exists(_date_folder):
+            mkdir(_date_folder)
+        return _date_folder
 
     def save_configuration(self, file_name: str = None):
         _start = get_current_time()
