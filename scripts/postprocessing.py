@@ -382,67 +382,76 @@ class PostProcessor:
             f'{prefix}_{self.plot_filename_postfix}.png'
         )
 
-    def get_enthalpy(self):
-        self.system_parameters['enthalpy'] = (
-                self.system_parameters['total_energy']
-                + self.system_parameters['pressure']
-                * self.system_parameters['volume']
-        )
-        return self.system_parameters['enthalpy']
+    def get_column_diff(self, column_name: str):
+        _values = self.system_parameters[column_name].values
+        _diff = np.zeros(_values.size)
+        _diff[1:] = _values[1:] - _values[:-1]
+        return _diff
 
-    def get_internal_energy_diff(self):
-        self.system_parameters['de'] = np.nan
-        self.system_parameters.loc[1:, 'de'] = (
-                self.system_parameters['total_energy'].values[1:]
-                - self.system_parameters['total_energy'].values[:-1]
-        )
-
-    def get_volume_diff(self):
-        self.system_parameters['dv'] = np.nan
-        self.system_parameters.loc[1:, 'dv'] = (
-                self.system_parameters['volume'].values[1:]
-                - self.system_parameters['volume'].values[:-1]
-        )
+    def get_integrated_column(self, column_name: str):
+        _diff = self.__getattribute__(f'get_{column_name}_diff')()
+        _integrated = np.zeros(self.system_parameters.shape[0])
+        for i in range(1, _integrated.size):
+            _integrated[i] = _integrated[i - 1] + _diff[i]
+        self.system_parameters[column_name] = _integrated
+        return _integrated
 
     def get_entropy_diff(self):
-        self.system_parameters['ds'] = np.nan
-        self.get_internal_energy_diff()
-        self.get_volume_diff()
-        self.system_parameters['ds'] = (
-                       self.system_parameters['de']
-                       + self.system_parameters['pressure']
-                       * self.system_parameters['dv']
-               ) / self.system_parameters['temperature']
+        return (
+                       self.get_column_diff('total_energy')
+                       + self.system_parameters['pressure'].values
+                       * self.get_column_diff('volume')
+               ) / self.system_parameters['temperature'].values
+
+    def __get_pdv(self):
+        return (
+                self.system_parameters['pressure'].values
+                * self.get_column_diff('volume')
+        )
+
+    def __get_vdp(self):
+        return (
+                self.system_parameters['volume'].values
+                * self.get_column_diff('pressure')
+        )
+
+    def __get_tds(self):
+        return (
+                self.system_parameters['temperature'].values
+                * self.get_entropy_diff()
+        )
+
+    def __get_sdt(self):
+        return (
+                self.system_parameters['entropy'].values
+                * self.get_column_diff('temperature')
+        )
+
+    def get_enthalpy_diff(self):
+        return self.__get_tds() + self.__get_vdp()
+
+    def get_free_energy_diff(self):
+        return -self.__get_pdv() - self.__get_sdt()
+
+    def get_gibbs_energy_diff(self):
+        return -self.__get_sdt() + self.__get_vdp()
+
+    def get_enthalpy(self):
+        return self.get_integrated_column('enthalpy')
 
     def get_entropy(self):
         # TODO entropy is negative after cooling to T = 0
-        self.get_entropy_diff()
-        self.system_parameters['entropy'] = 0.0
-        _entropy = self.system_parameters['entropy'].values
-        _ds = self.system_parameters['ds'].values
-        for i in range(1, len(_entropy)):
-            _entropy[i] = _entropy[i - 1] + _ds[i]
-
-        self.system_parameters['entropy'] = _entropy
-        return self.system_parameters
+        return self.get_integrated_column('entropy')
 
     def get_free_energy(self):
-        self.get_entropy()
-        self.system_parameters['free_energy'] = (
-            self.system_parameters['total_energy']
-            - self.system_parameters['temperature']
-            * self.system_parameters['entropy']
-        )
-        return self.system_parameters['free_energy']
+        if 'entropy' not in self.system_parameters.columns:
+            self.get_entropy()
+        return self.get_integrated_column('free_energy')
 
     def get_gibbs_energy(self):
-        self.get_enthalpy()
-        self.system_parameters['gibbs_energy'] = (
-            self.system_parameters['enthalpy']
-            - self.system_parameters['temperature']
-            * self.system_parameters['entropy']
-        )
-        return self.system_parameters['gibbs_energy']
+        if 'enthalpy' not in self.system_parameters.columns:
+            self.get_enthalpy()
+        return self.get_integrated_column('gibbs_energy')
 
 
 class RegressionRDF:
