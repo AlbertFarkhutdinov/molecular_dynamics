@@ -175,7 +175,7 @@ class MolecularDynamics:
 
     def reduce_transition_processes(
             self,
-            skipped_iterations: int = 100,
+            skipped_iterations: int = 1000,
     ):
         print('Reducing Transition Processes.')
         log_debug_info('Reducing Transition Processes.')
