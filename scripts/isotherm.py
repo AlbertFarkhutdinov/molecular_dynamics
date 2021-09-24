@@ -31,7 +31,7 @@ class Isotherm:
         self.rdf = RadialDistributionFunction(
             sample=self.sample,
             layer_thickness=layer_thickness,
-            ensembles_number=self.steps_number
+            ensembles_number=self.ensembles_number
         )
         self.transport_properties = TransportProperties(
             sample=self.sample,
@@ -75,7 +75,15 @@ class Isotherm:
                 self.sample.calculate_interparticle_vectors()
                 # if step <= self.sample.sim_parameters.ssf_steps:
                 #     self.ssf.accumulate()
-            self.rdf.accumulate()
+                self.rdf.accumulate()
+
+                # TODO
+                # self.sample.saver.save_configuration(
+                #     file_name=(
+                #         'system_configuration_'
+                #         f'{self.sample.get_str_time()}.csv'
+                #     ),
+                # )
 
             self.transport_properties.accumulate()
 

@@ -259,7 +259,7 @@ class MolecularDynamics:
     def run_md(self):
         start = get_current_time()
         system_parameters = self.get_empty_parameters()
-        self.reduce_transition_processes()
+        # self.reduce_transition_processes()
         # self.dynamic.first_positions = deepcopy(self.dynamic.positions)
 
         for step in range(1, self.sim_parameters.iterations_numbers + 1):
