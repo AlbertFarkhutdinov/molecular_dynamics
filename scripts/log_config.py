@@ -1,8 +1,8 @@
-from helpers import get_date
 import functools
 from os.path import join
 
 from scripts.constants import PATH_TO_DATA, IS_LOGGED
+from scripts.helpers import get_date
 
 
 if IS_LOGGED:
