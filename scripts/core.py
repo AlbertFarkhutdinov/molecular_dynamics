@@ -1,5 +1,4 @@
 from copy import deepcopy
-from datetime import datetime
 from typing import Optional
 
 import numpy as np
@@ -12,7 +11,7 @@ from scripts.external_parameters import ExternalParameters
 from scripts.immutable_parameters import ImmutableParameters
 from scripts.isotherm import Isotherm
 from scripts.initializer import Initializer
-from scripts.helpers import get_config_parameters
+from scripts.helpers import get_config_parameters, get_current_time
 from scripts.numba_procedures import get_radius_vectors
 from scripts.saver import Saver
 from scripts.simulation_parameters import SimulationParameters
@@ -86,6 +85,7 @@ class MolecularDynamics:
         self.saver = Saver(
             system=self.system,
             simulation_parameters=self.sim_parameters,
+            parameters_saving_step=1000,
         )
 
     def calculate_interparticle_vectors(self):
@@ -175,7 +175,7 @@ class MolecularDynamics:
 
     def reduce_transition_processes(
             self,
-            skipped_iterations: int = 50,
+            skipped_iterations: int = 1000,
     ):
         print('Reducing Transition Processes.')
         log_debug_info('Reducing Transition Processes.')
@@ -217,17 +217,19 @@ class MolecularDynamics:
                 is_rdf_calculation=True,
             )
 
-    def save_all(self, system_parameters):
-        time = str(datetime.now()).split('.')[0].replace(
+    @staticmethod
+    def get_str_time():
+        return str(get_current_time()).split('.')[0].replace(
             ' ', '_'
         ).replace(
             ':', '_'
         ).replace(
             '-', '_'
         )
-        self.saver.save_configurations(
-            is_last_step=True,
-        )
+
+    def save_all(self, system_parameters):
+        time = self.get_str_time()
+        self.saver.save_configurations(is_last_step=True)
         self.saver.save_system_parameters(
             system_parameters=system_parameters,
             file_name=f'system_parameters_{time}.csv',
@@ -236,10 +238,8 @@ class MolecularDynamics:
             file_name=f'system_configuration_{time}.csv',
         )
 
-    @logger_wraps()
-    def run_md(self):
-        start = datetime.now()
-        system_parameters = get_parameters_dict(
+    def get_empty_parameters(self):
+        return get_parameters_dict(
             names=(
                 'time',
                 'temperature',
@@ -252,10 +252,14 @@ class MolecularDynamics:
                 'diffusion',
                 'volume',
             ),
-            value_size=self.sim_parameters.iterations_numbers,
+            value_size=self.saver.parameters_saving_step,
         )
 
-        # self.reduce_transition_processes()
+    @logger_wraps()
+    def run_md(self):
+        start = get_current_time()
+        system_parameters = self.get_empty_parameters()
+        self.reduce_transition_processes()
         # self.dynamic.first_positions = deepcopy(self.dynamic.positions)
 
         for step in range(1, self.sim_parameters.iterations_numbers + 1):
@@ -268,12 +272,18 @@ class MolecularDynamics:
             )
             print_info(
                 step=step,
+                step_index=step % self.saver.parameters_saving_step,
                 iterations_numbers=self.sim_parameters.iterations_numbers,
                 current_time=self.system.time,
                 parameters=system_parameters,
             )
             log_debug_info(f'End of step {step}.\n')
-
+            if step % self.saver.parameters_saving_step == 0:
+                self.saver.save_system_parameters(
+                    system_parameters=system_parameters,
+                    file_name=f'system_parameters_{self.get_str_time()}.csv',
+                )
+                system_parameters = self.get_empty_parameters()
             if self.is_with_isotherms:
                 isotherm_steps = (
                     1,
@@ -285,12 +295,10 @@ class MolecularDynamics:
                     Isotherm(
                         sample=deepcopy(self),
                     ).run()
-        self.save_all(
-            system_parameters=system_parameters,
-        )
+        self.save_all(system_parameters=system_parameters)
         print(
             'Simulation is completed. '
-            f'Time of calculation: {datetime.now() - start}'
+            f'Time of calculation: {get_current_time() - start}'
         )
 
 

@@ -3,7 +3,7 @@
     "init_type": 2,
     "particles_number": 686,
     "cell_dimensions": [12.25, 12.25, 12.25],
-    "initial_temperature": 1.5
+    "initial_temperature": 1.0
   },
   "immutables": {
     "time_step": 0.005,
