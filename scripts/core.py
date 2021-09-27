@@ -283,7 +283,8 @@ class MolecularDynamics:
                     system_parameters=system_parameters,
                     file_name=f'system_parameters_{self.get_str_time()}.csv',
                 )
-                system_parameters = self.get_empty_parameters()
+                if step < self.sim_parameters.iterations_numbers:
+                    system_parameters = self.get_empty_parameters()
             if self.is_with_isotherms:
                 isotherm_steps = (
                     1,
