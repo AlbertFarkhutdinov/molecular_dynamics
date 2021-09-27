@@ -1,5 +1,5 @@
 from copy import deepcopy
-from typing import Optional
+from typing import Dict
 
 import numpy as np
 
@@ -11,7 +11,7 @@ from scripts.external_parameters import ExternalParameters
 from scripts.immutable_parameters import ImmutableParameters
 from scripts.isotherm import Isotherm
 from scripts.initializer import Initializer
-from scripts.helpers import get_config_parameters, get_current_time
+from scripts.helpers import get_json, get_current_time, save_config_parameters
 from scripts.numba_procedures import get_radius_vectors
 from scripts.saver import Saver
 from scripts.simulation_parameters import SimulationParameters
@@ -24,26 +24,28 @@ class MolecularDynamics:
 
     def __init__(
             self,
-            config_filename: Optional[str],
+            config_filenames: Dict[str, str],
             is_with_isotherms: bool = True,
             is_msd_calculated: bool = True,
     ):
         log_debug_info(f'{self.__class__.__name__} instance initialization.')
         print(f'{self.__class__.__name__} instance initialization.')
-        config_parameters = get_config_parameters(config_filename)
-
+        self.config_parameters = {
+            key: get_json(key, value)
+            for key, value in config_filenames.items()
+        }
         self.system = System()
         log_debug_info('System is created.')
         print('System is created.')
         self.initials = Initializer(
             system=self.system,
-            **config_parameters["initials"],
+            **self.config_parameters["initials"],
         ).get_initials()
         log_debug_info('Initial parameters are received.')
         print('Initial parameters are received.')
         self.immutables = ImmutableParameters(
             particles_number=self.initials.configuration.particles_number,
-            **config_parameters["immutables"],
+            **self.config_parameters["immutables"],
         )
         log_debug_info('Immutable parameters are received.')
         print('Immutable parameters are received.')
@@ -72,12 +74,14 @@ class MolecularDynamics:
         )
         self.externals, self.integrator = None, None
         self.sim_parameters, self.saver = None, None
-        self.update_simulation_parameters(config_parameters)
+        self.update_simulation_parameters(self.config_parameters)
         log_debug_info('Simulation parameters are updated.')
         print('Simulation parameters are updated.')
 
     def update_simulation_parameters(self, config_parameters):
-        self.externals = ExternalParameters(**config_parameters["externals"])
+        self.externals = ExternalParameters(
+            **config_parameters.get("externals", dict())
+        )
         self.integrator = self.get_integrator()
         self.sim_parameters = SimulationParameters(
             **config_parameters['simulation_parameters']
@@ -301,7 +305,7 @@ class MolecularDynamics:
             'Simulation is completed. '
             f'Time of calculation: {get_current_time() - start}'
         )
-
-
-if __name__ == '__main__':
-    MD = MolecularDynamics('nve.json')
+        save_config_parameters(
+            config_parameters=self.config_parameters,
+            config_number=0,
+        )

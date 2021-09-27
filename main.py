@@ -1,29 +1,25 @@
-from typing import List
+from typing import Dict, List
 
 import numpy as np
 
 from scripts.core import MolecularDynamics
-from scripts.helpers import get_config_parameters, save_config_parameters
+from scripts.helpers import get_json, save_config_parameters
 from scripts.log_config import logger_wraps
 
 
 @logger_wraps()
 def main(
-        config_filenames: List[str],
+        config_filenames: List[Dict[str, str]],
         is_with_isotherms: bool = True,
 ):
     _config_filename = config_filenames[0]
     md_instance = MolecularDynamics(
-        config_filename=_config_filename,
+        config_filenames=_config_filename,
         is_with_isotherms=is_with_isotherms
     )
     md_instance.run_md()
-    save_config_parameters(
-        config_parameters=get_config_parameters(_config_filename),
-        config_number=0,
-    )
     for i, file_name in enumerate(config_filenames[1:]):
-        config_parameters = get_config_parameters(file_name)
+        config_parameters = get_json(file_name)
         md_instance.update_simulation_parameters(config_parameters)
         md_instance.run_md()
         save_config_parameters(
@@ -36,9 +32,16 @@ if __name__ == '__main__':
     import os
     print(os.getcwd())
     np.set_printoptions(threshold=5000)
+    IMMUTABLES = 'lennard_jones.json'
+    SIMULATION_1 = {
+        'immutables': IMMUTABLES,
+        'initials': 'from_file_1.3.json',
+        'externals': 'velocity_scaling_HV_2e-2_T_13e-1.json',
+        'simulation_parameters': 'test_short.json',
+    }
     main(
         config_filenames=[
-            'prepared_1.3_normal.json',
+            SIMULATION_1,
         ],
-        is_with_isotherms=True,
+        is_with_isotherms=False,
     )

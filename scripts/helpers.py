@@ -8,12 +8,8 @@ import numpy as np
 from scripts.constants import PATH_TO_CONFIG, PATH_TO_DATA
 
 
-def get_config_parameters(file_name):
-    _config_filename = join(
-        PATH_TO_CONFIG,
-        file_name
-    )
-    with open(_config_filename, encoding='utf8') as file:
+def get_json(*args):
+    with open(join(PATH_TO_CONFIG, *args), encoding='utf8') as file:
         config_parameters = load(file)
     return config_parameters
 
