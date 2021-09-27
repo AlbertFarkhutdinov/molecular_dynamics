@@ -38,8 +38,11 @@ class Initializer:
             )
         else:
             raise ValueError('Unacceptable `init_type`.')
-        temperature = initial_parameters.get("initial_temperature", 0.0)
-        if temperature:
+        temperature = initial_parameters.get(
+            "initial_temperature",
+            self.system.configuration.get_temperature()
+        )
+        if temperature and self.system.configuration.velocities.sum() == 0.0:
             self.get_initial_velocities(temperature=temperature)
             self.system.configuration.temperature = temperature
         self.system.pressure = initial_parameters.get(
