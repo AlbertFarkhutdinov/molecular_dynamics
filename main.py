@@ -35,9 +35,11 @@ if __name__ == '__main__':
     IMMUTABLES = 'lennard_jones.json'
     SIMULATION_1 = {
         'immutables': IMMUTABLES,
-        'initials': 'from_file_1.3.json',
+        'initials': 'from_file_13e-1.json',
         'externals': 'velocity_scaling_HV_2e-2_T_13e-1.json',
-        'simulation_parameters': 'test_short.json',
+        'simulation_parameters': (
+            'n010e0_conf_005e0_100e0_iso_500e0_eq_500e0_ens_002e3.json'
+        ),
     }
     main(
         config_filenames=[
