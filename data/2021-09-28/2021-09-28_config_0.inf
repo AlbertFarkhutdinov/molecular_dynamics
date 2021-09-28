@@ -1,0 +1,29 @@
+{
+  "immutables": {
+    "time_step": 0.005,
+    "potential_type": "lennard_jones",
+    "skin_for_neighbors": 0.3
+  },
+  "initials": {
+    "init_type": -1,
+    "file_name": "prepared/after_nvt_heating_T_13e-1.csv"
+  },
+  "externals": {
+    "environment_type": "mtk_nvt",
+    "heating_velocity": 0.0,
+    "temperature": 1.3,
+    "thermostat_parameters": [
+      16.0
+    ]
+  },
+  "simulation_parameters": {
+    "iterations_numbers": 5000,
+    "configuration_storing_step": 20,
+    "configuration_saving_step": 1000,
+    "isotherm_saving_step": 5000,
+    "equilibration_steps": 15000,
+    "ensembles_number": 5000,
+    "ssf_steps": 0,
+    "ssf_max_wave_number": 10
+  }
+}

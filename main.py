@@ -38,7 +38,7 @@ if __name__ == '__main__':
         'initials': 'from_file_13e-1.json',
         'externals': 'mtk_nvt.json',
         'simulation_parameters': (
-            'n001e3_conf_020e0_001e3_iso_001e3_eq_015e3_ens_005e3.json'
+            'n005e3_conf_020e0_001e3_iso_005e3_eq_015e3_ens_005e3.json'
         ),
     }
     main(
