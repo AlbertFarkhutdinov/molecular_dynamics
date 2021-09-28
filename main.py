@@ -36,9 +36,9 @@ if __name__ == '__main__':
     SIMULATION_1 = {
         'immutables': IMMUTABLES,
         'initials': 'from_file_13e-1.json',
-        'externals': 'velocity_scaling_HV_2e-2_T_13e-1.json',
+        'externals': 'mtk_nvt.json',
         'simulation_parameters': (
-            'n010e0_conf_005e0_100e0_iso_500e0_eq_500e0_ens_002e3.json'
+            'n001e3_conf_020e0_001e3_iso_001e3_eq_015e3_ens_005e3.json'
         ),
     }
     main(

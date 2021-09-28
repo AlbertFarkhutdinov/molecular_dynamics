@@ -3,7 +3,8 @@ from typing import Dict
 
 import numpy as np
 
-from scripts.integrators.npt_mttk import MTTK
+from scripts.integrators.npt_mttk import MTTKNPT
+from scripts.integrators.nvt_mttk import MTTKNVT
 from scripts.integrators.nve import NVE
 from scripts.integrators.nvt_velocity_scaling import VelocityScaling
 from scripts.accelerations_calculator import AccelerationsCalculator
@@ -102,8 +103,10 @@ class MolecularDynamics:
 
     def get_integrator(self):
         integrator = {
-            'mtk': MTTK,
-            'mttk': MTTK,
+            'mtk_npt': MTTKNPT,
+            'mttk_npt': MTTKNPT,
+            'mtk_nvt': MTTKNVT,
+            'mttk_nvt': MTTKNVT,
             'velocity_scaling': VelocityScaling,
             'velocity_rescaling': VelocityScaling,
         }.get(self.externals.environment_type, NVE)
@@ -263,7 +266,8 @@ class MolecularDynamics:
     def run_md(self):
         start = get_current_time()
         system_parameters = self.get_empty_parameters()
-        # self.reduce_transition_processes()
+        if self.config_parameters["initials"].get("init_type") != -1:
+            self.reduce_transition_processes()
         # self.dynamic.first_positions = deepcopy(self.dynamic.positions)
 
         for step in range(1, self.sim_parameters.iterations_numbers + 1):

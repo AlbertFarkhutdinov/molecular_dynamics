@@ -1,5 +1,5 @@
 {
-  "environment_type": "mtk",
+  "environment_type": "mtk_npt",
   "heating_velocity": 0.0,
   "temperature": 2.8,
   "pressure": 22,

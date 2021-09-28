@@ -4,7 +4,7 @@ from scripts.integrators.base_integrator import BaseIntegrator
 from scripts.log_config import logger_wraps, log_debug_info
 
 
-class MTTK(BaseIntegrator):
+class MTTKNPT(BaseIntegrator):
 
     def __init__(self, **integrator_kwargs):
         log_debug_info(f'{self.__class__.__name__} instance initialization.')

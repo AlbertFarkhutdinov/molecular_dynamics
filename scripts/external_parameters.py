@@ -10,11 +10,10 @@ class ExternalParameters:
         self.environment_type = external_kwargs.get('environment_type')
         self.temperature = external_kwargs.get('temperature')
         self.pressure = external_kwargs.get('pressure')
-        if self.environment_type in ('nose_hoover', 'mttk', 'mtk'):
-            self.thermostat_parameters = np.array(
-                external_kwargs.get('thermostat_parameters')
-            )
-            self.barostat_parameter = external_kwargs.get('barostat_parameter')
+        self.thermostat_parameters = np.array(
+            external_kwargs.get('thermostat_parameters')
+        )
+        self.barostat_parameter = external_kwargs.get('barostat_parameter')
 
     def __repr__(self):
         return get_representation(self)

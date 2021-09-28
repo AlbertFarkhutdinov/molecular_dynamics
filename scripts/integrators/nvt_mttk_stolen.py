@@ -148,7 +148,7 @@ if __name__ == "__main__":
     import matplotlib.pyplot as plt
 
     T0 = 0.1
-    v0 = np.sqrt(4 * T0) * 2
+    v0 = np.sqrt(0.05 * T0) * 2
     x0 = 0.0
     dt = 0.1
     N = 10000
