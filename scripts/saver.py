@@ -1,11 +1,10 @@
-from datetime import datetime
 from os import mkdir
 from os.path import exists, join
 
 import pandas as pd
 
 from scripts.constants import PATH_TO_DATA
-from scripts.helpers import get_formatted_time, get_date
+from scripts.helpers import get_formatted_time, get_current_time, get_date
 from scripts.simulation_parameters import SimulationParameters
 from scripts.system import System
 
@@ -34,15 +33,16 @@ class Saver:
         self.configuration_saving_step = (
             simulation_parameters.configuration_saving_step
         )
-        self.date_folder = join(
-            PATH_TO_DATA,
-            get_date(),
-        )
-        if not exists(self.date_folder):
-            mkdir(self.date_folder)
+
+    @property
+    def date_folder(self):
+        _date_folder = join(PATH_TO_DATA, get_date())
+        if not exists(_date_folder):
+            mkdir(_date_folder)
+        return _date_folder
 
     def save_configuration(self, file_name: str = None):
-        _start = datetime.now()
+        _start = get_current_time()
         _file_name = join(
             self.date_folder,
             file_name or 'system_configuration.csv',
@@ -76,7 +76,7 @@ class Saver:
         )
         print(
             f'The last system configuration is saved. '
-            f'Time of saving: {datetime.now() - _start}'
+            f'Time of saving: {get_current_time() - _start}'
         )
 
     def update_system_parameters(
@@ -120,7 +120,7 @@ class Saver:
             file_name: str = None,
             is_last_step: bool = False,
     ):
-        _start = datetime.now()
+        _start = get_current_time()
         file_name = join(
             self.date_folder,
             file_name or 'system_config.txt'
@@ -143,7 +143,7 @@ class Saver:
                 file.write('\n'.join(self.lammps_configurations))
             print(
                 f'LAMMPS trajectories for last {_saving_step} steps are saved.'
-                f' Time of saving: {datetime.now() - _start}'
+                f' Time of saving: {get_current_time() - _start}'
             )
             self.lammps_configurations = []
 
@@ -154,7 +154,7 @@ class Saver:
             data_name: str,
             file_name: str = None,
     ):
-        _start = datetime.now()
+        _start = get_current_time()
         _file_name = join(
             self.date_folder,
             file_name or default_file_name,
@@ -166,7 +166,7 @@ class Saver:
         )
         print(
             f'{data_name} are saved. '
-            f'Time of saving: {datetime.now() - _start}'
+            f'Time of saving: {get_current_time() - _start}'
         )
 
     def save_system_parameters(

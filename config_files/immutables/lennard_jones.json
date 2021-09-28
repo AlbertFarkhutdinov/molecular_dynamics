@@ -1,0 +1,5 @@
+{
+  "time_step": 0.005,
+  "potential_type": "lennard_jones",
+  "skin_for_neighbors": 0.3
+}

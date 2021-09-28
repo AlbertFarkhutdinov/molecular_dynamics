@@ -1,0 +1,11 @@
+{
+  "init_type": 1,
+  "lattice_constant": 1.75,
+  "particles_numbers": [
+    7,
+    7,
+    7
+  ],
+  "crystal_type": "FCC",
+  "initial_temperature": 1e-4
+}

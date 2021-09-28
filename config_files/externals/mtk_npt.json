@@ -1,0 +1,10 @@
+{
+  "environment_type": "mtk",
+  "heating_velocity": 0.0,
+  "temperature": 2.8,
+  "pressure": 22,
+  "thermostat_parameters": [
+    100.0
+  ],
+  "barostat_parameter": 200.0
+}

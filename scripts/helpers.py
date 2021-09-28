@@ -8,12 +8,8 @@ import numpy as np
 from scripts.constants import PATH_TO_CONFIG, PATH_TO_DATA
 
 
-def get_config_parameters(file_name):
-    _config_filename = join(
-        PATH_TO_CONFIG,
-        file_name
-    )
-    with open(_config_filename, encoding='utf8') as file:
+def get_json(*args):
+    with open(join(PATH_TO_CONFIG, *args), encoding='utf8') as file:
         config_parameters = load(file)
     return config_parameters
 
@@ -48,12 +44,16 @@ def sign(value: float) -> int:
     return 0
 
 
+def get_current_time():
+    return datetime.now()
+
+
 def get_formatted_time():
-    return datetime.now().strftime("%Y-%m-%d_%H_%M")
+    return get_current_time().strftime("%Y-%m-%d_%H_%M")
 
 
 def get_date():
-    return datetime.today().strftime("%Y-%m-%d")
+    return get_current_time().strftime("%Y-%m-%d")
 
 
 def get_parameters_dict(names: Iterable, value_size: int):

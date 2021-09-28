@@ -12,6 +12,13 @@ class Isotherm:
             sample,
             layer_thickness: float = 0.01,
     ):
+        """
+        Ensembles number for static structure properties (RDF)
+        is 2 * `ensembles_number` - 1.
+        Ensembles number for dynamic properties (MSD, etc.)
+        is `ensembles_number`.
+
+        """
         self.start = time()
         self.sample = sample
         self.layer_thickness = layer_thickness
@@ -66,9 +73,17 @@ class Isotherm:
             if step <= self.ensembles_number:
                 self.transport_properties.init_ensembles()
                 self.sample.calculate_interparticle_vectors()
-                self.rdf.accumulate()
                 # if step <= self.sample.sim_parameters.ssf_steps:
                 #     self.ssf.accumulate()
+                self.rdf.accumulate()
+
+                # TODO
+                # self.sample.saver.save_configuration(
+                #     file_name=(
+                #         'system_configuration_'
+                #         f'{self.sample.get_str_time()}.csv'
+                #     ),
+                # )
 
             self.transport_properties.accumulate()
 
