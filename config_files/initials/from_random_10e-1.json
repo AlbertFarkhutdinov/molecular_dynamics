@@ -1,0 +1,10 @@
+{
+  "init_type": 2,
+  "particles_number": 686,
+  "cell_dimensions": [
+    12.25,
+    12.25,
+    12.25
+  ],
+  "initial_temperature": 1.0
+}
