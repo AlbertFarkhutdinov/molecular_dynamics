@@ -2,7 +2,7 @@ jupyter==1.0.0
 matplotlib==3.4.2
 loguru==0.5.3
 numba==0.53.1
-numpy==1.21.0
+numpy==1.22.0
 pandas==1.2.5
 pylint-af==1.0.1
 scikit-learn==0.24.2
