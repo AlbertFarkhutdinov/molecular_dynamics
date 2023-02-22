@@ -1,0 +1,5 @@
+{
+  "environment_type": "velocity_scaling",
+  "heating_velocity": 0.0004,
+  "temperature": 0.0001
+}

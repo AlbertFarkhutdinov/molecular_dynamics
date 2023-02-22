@@ -1,0 +1,8 @@
+{
+  "environment_type": "mtk_nvt",
+  "heating_velocity": 0.0,
+  "temperature": 0.0001,
+  "thermostat_parameters": [
+    55.0
+  ]
+}
