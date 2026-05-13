@@ -2,15 +2,15 @@ from typing import Dict, List
 
 import numpy as np
 
-from scripts.core import MolecularDynamics
-from scripts.helpers import get_json, save_config_parameters
-from scripts.log_config import logger_wraps
+from molecular_dynamics.core import MolecularDynamics
+from molecular_dynamics.helpers import get_json, save_config_parameters
+from molecular_dynamics.log_config import logger_wraps
 
 
 @logger_wraps()
 def main(
-        config_filenames: List[Dict[str, str]],
-        is_with_isotherms: bool = True,
+    config_filenames: List[Dict[str, str]],
+    is_with_isotherms: bool = True,
 ):
     _config_filename = config_filenames[0]
     md_instance = MolecularDynamics(

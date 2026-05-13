@@ -12,7 +12,7 @@ Before you begin, ensure you have installed the latest version of Python
 and install required dependencies
 
 ```
->>> pip install -r requirements.txt
+>>> uv sync --frozen
 ```
 
 ## Using `molecular_dynamics`
@@ -20,7 +20,7 @@ and install required dependencies
 Run the following in terminal to run molecular dynamics simulation.
 
 ```
->>> python -m main
+>>> uv run main.py
 ```
 
 ## Contributing to `molecular_dynamics`

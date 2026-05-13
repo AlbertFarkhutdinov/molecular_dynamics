@@ -1,0 +1,9 @@
+[flake8]
+docstring-convention=numpy
+docstring_style=numpy
+extend-ignore=WPS410,WPS412
+exclude = migrations,manage.py
+per-file-ignores =
+    settings.py: WPS407
+    rename_project.py: WPS210
+    **/tests.py: WPS202,WPS204,WPS214
